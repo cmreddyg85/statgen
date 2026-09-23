@@ -139,7 +139,7 @@ export function UserForm({ open, user, onClose, onSaved }: UserFormProps) {
           hint={
             isEdit
               ? 'Leave blank to keep the current password. Setting one signs this user out everywhere.'
-              : 'At least 12 characters. Share it with the user through a secure channel.'
+              : 'At least 3 characters. Share it with the user through a secure channel.'
           }
           disabled={saving}
           autoComplete="new-password"

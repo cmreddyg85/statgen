@@ -34,7 +34,7 @@ const envSchema = z.object({
   COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).default('lax'),
   LOGIN_RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
   LOGIN_RATE_LIMIT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-  PASSWORD_MIN_LENGTH: z.coerce.number().int().min(8).default(12),
+  PASSWORD_MIN_LENGTH: z.coerce.number().int().min(3).default(3),
   MOBILE_NUMBER_REGEX: z.string().default('^[0-9]{10,15}$'),
 
   BOOTSTRAP_ADMIN_NAME: z.string().default('Platform Administrator'),

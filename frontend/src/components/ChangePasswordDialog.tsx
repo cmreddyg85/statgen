@@ -114,7 +114,7 @@ export function ChangePasswordDialog({
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
           error={fieldErrors.newPassword}
-          hint="At least 12 characters."
+          hint="At least 3 characters."
           disabled={saving}
           autoComplete="new-password"
         />

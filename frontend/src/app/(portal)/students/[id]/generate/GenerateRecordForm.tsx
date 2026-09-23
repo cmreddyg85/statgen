@@ -15,7 +15,7 @@ import {
   type GenerateRecordInput,
 } from '@/lib/generate-record';
 import type { SbiStatement, Student, StudentRecordEntry } from '@/lib/types';
-import { Button } from '@/components/Button';
+import { Button, LinkButton } from '@/components/Button';
 import { TextField } from '@/components/Field';
 import { PageHeader } from '@/components/PageHeader';
 import { Toggle } from '@/components/Toggle';
@@ -27,10 +27,10 @@ type GenerateResponse = SbiStatement & { extracted: Record<string, unknown> };
 /**
  * Generate-record form.
  *
- * Generate sends the details to the SBI module and prints all three payloads
- * to the console. A statement whose dates came out in order is stored against
- * the student and the browser returns to their page; one with `invalidDates`
- * is never stored, and the form stays put with the error.
+ * Generate sends the details to the SBI module. A statement whose dates came
+ * out in order is stored against the student and the browser returns to their
+ * page; one with `invalidDates` is never stored, and the form stays put with
+ * the error.
  *
  * With `recordId` the same form edits a stored record: the account block was
  * already read off a PDF, so uploading one again is optional.
@@ -168,16 +168,6 @@ export function GenerateRecordForm({
     setBusy(true);
     try {
       const { extracted, ...statement } = await runGeneration(payload);
-      /* eslint-disable no-console */
-      console.log('1. Generate record payload:', payload);
-      // What the form + the statement's first page become: account block,
-      // salary periods, and the generator's settings.
-      console.log('2. SBI extract:', extracted);
-      console.log(JSON.stringify(extracted, null, 2));
-      console.log('3. SBI statement:', statement);
-      console.log(JSON.stringify(statement, null, 2));
-      /* eslint-enable no-console */
-
       if (statement.invalidDates.length > 0) {
         // Out-of-order dates mean the generated statement is unusable, so
         // nothing is stored and the form stays where it is.
@@ -374,6 +364,9 @@ export function GenerateRecordForm({
         </section>
 
         <div className="flex justify-end gap-3 pb-2">
+          <LinkButton href={`/students/${studentId}`} variant="secondary">
+            Cancel
+          </LinkButton>
           <Button
             variant="secondary"
             onClick={() => {

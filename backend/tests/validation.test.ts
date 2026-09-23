@@ -52,7 +52,7 @@ describe('student validation', () => {
 describe('user validation', () => {
   it('enforces the configured minimum password length', () => {
     const base = { name: 'Ravi Kumar', username: 'ravi.k' };
-    expect(createUserSchema.safeParse({ ...base, password: 'short' }).success).toBe(false);
+    expect(createUserSchema.safeParse({ ...base, password: 'ab' }).success).toBe(false);
     expect(createUserSchema.safeParse({ ...base, password: 'LongEnoughPass!23' }).success).toBe(
       true,
     );
@@ -103,7 +103,7 @@ describe('change password validation', () => {
 
   it('enforces the minimum length even when both fields match', () => {
     expect(
-      changePasswordSchema.safeParse({ newPassword: 'short', confirmPassword: 'short' })
+      changePasswordSchema.safeParse({ newPassword: 'ab', confirmPassword: 'ab' })
         .success,
     ).toBe(false);
   });
