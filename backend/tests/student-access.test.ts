@@ -25,14 +25,11 @@ function student(createdBy: string): StudentRecord {
     name: 'Asha Menon',
     mobileNumber: '9876543210',
     offerCompany: 'Acme Corp',
-    companyVerified: false,
-    verifiedBy: null,
-    verifiedByName: null,
-    verifiedAt: null,
     createdBy,
     createdByName: 'Regular Person',
     createdAt: '2026-09-22T10:00:00.000Z',
     updatedAt: '2026-09-22T10:00:00.000Z',
+    archivedAt: null,
   };
 }
 

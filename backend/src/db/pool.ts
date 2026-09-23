@@ -20,7 +20,7 @@ pool.on('error', (error) => {
   logger.error({ err: error }, 'Unexpected PostgreSQL pool error');
 });
 
-export type QueryParam = string | number | boolean | Date | null | undefined;
+export type QueryParam = string | number | boolean | Date | Buffer | null | undefined;
 
 /** All data access goes through parameterized statements. */
 export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(

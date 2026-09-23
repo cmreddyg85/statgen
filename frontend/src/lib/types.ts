@@ -22,14 +22,74 @@ export interface Student {
   name: string;
   mobileNumber: string;
   offerCompany: string | null;
-  companyVerified: boolean;
-  verifiedBy: string | null;
-  verifiedByName: string | null;
-  verifiedAt: string | null;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Set when the student was archived; users never see archived students. */
+  archivedAt: string | null;
+}
+
+/** One row of a transaction table, exactly as the SBI module emits it. */
+export interface SbiTransaction {
+  Date: string;
+  Narration: string;
+  Ref: string;
+  Debit: string;
+  Credit: string;
+  Balance: string;
+  isSalary?: boolean;
+}
+
+export interface SbiStatement {
+  accountInfo: Record<string, string>;
+  salaryTrans: string[];
+  transactions: SbiTransaction[];
+  invalidDates: unknown[];
+}
+
+/** A generated statement as listed on a student's page. */
+export interface StudentRecordSummary {
+  id: string;
+  studentId: string;
+  createdBy: string;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** File name of the statement page the record was generated from. */
+  attachmentName: string | null;
+  /** Set on the one record per student that has been finalized. */
+  finalizedAt: string | null;
+  finalizedBy: string | null;
+  finalizedByName: string | null;
+}
+
+/** What the server resolved about a machine when the session was created. */
+export interface SessionClientInfo {
+  ipAddress?: string | null;
+  hostname?: string | null;
+  provider?: string | null;
+  macAddress?: string | null;
+  browser?: string | null;
+  operatingSystem?: string | null;
+  device?: string | null;
+}
+
+/** One live session of a user, as User Management lists it. */
+export interface ActiveSession {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  clientInfo: SessionClientInfo | null;
+}
+
+/** The same record with the three payloads that produced it. */
+export interface StudentRecordEntry extends StudentRecordSummary {
+  input: Record<string, unknown>;
+  extract: Record<string, unknown>;
+  statement: SbiStatement;
 }
 
 export interface SessionInfo {
@@ -60,9 +120,9 @@ export interface UserStats {
 }
 
 export interface StudentStats {
+  /** Students still in play; archived ones are counted separately. */
   total: number;
-  verified: number;
-  unverified: number;
+  archived: number;
 }
 
 export interface AuditEntry {
@@ -88,22 +148,46 @@ export interface AdminStats {
   recentActivity: AuditEntry[];
 }
 
-/** An option in the Generate screen's module dropdown. */
-export interface ModuleOption {
-  key: string;
-  label: string;
-  description: string;
+export interface Paginated<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }
 
-/** A record generated for a student against one business module. */
-export interface StudentModuleRecord {
+export interface UserStats {
+  total: number;
+  active: number;
+  inactive: number;
+  admins: number;
+}
+
+export interface StudentStats {
+  /** Students still in play; archived ones are counted separately. */
+  total: number;
+  archived: number;
+}
+
+export interface AuditEntry {
   id: string;
-  studentId: string;
-  module: string;
-  reference: string;
-  status: string;
-  payload: Record<string, unknown>;
-  generatedBy: string;
-  generatedByName: string | null;
+  userId: string | null;
+  userName: string | null;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
   createdAt: string;
+}
+
+/** Response of GET /users/:id/audit. */
+export interface UserAuditPage extends Paginated<AuditEntry> {
+  user: User;
+}
+
+export interface AdminStats {
+  users: UserStats;
+  students: StudentStats;
+  recentActivity: AuditEntry[];
 }

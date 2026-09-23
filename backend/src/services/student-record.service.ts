@@ -1,84 +1,183 @@
-import { findModule } from '../config/modules.js';
-import * as records from '../repositories/student-record.repository.js';
-import * as studentService from './student.service.js';
 import { recordAudit } from './audit.service.js';
-import type { Paginated, RequestActor, StudentModuleRecord } from '../types.js';
-import { badRequest, forbidden } from '../utils/errors.js';
+import * as studentService from './student.service.js';
+import * as records from '../repositories/student-record.repository.js';
+import type { RequestActor, StudentRecordEntry, StudentRecordSummary } from '../types.js';
+import { conflict, notFound } from '../utils/errors.js';
 
 /**
- * Generating module records for a student.
- *
- * What a record ultimately holds comes from the upstream module integration;
- * until that lands, a generated row carries its identity (module, reference,
- * status) and an empty `payload` for the integration to fill. Nothing
- * invented is presented as real business data.
+ * Generated statements hang off a student, so they inherit that student's
+ * ownership rule: every call resolves the student through
+ * `studentService.getById`, which 404s anything the actor may not touch.
  */
-
-/**
- * `SBI-20260922-0007` — module, date, and a per-student running sequence, so
- * references stay readable and unique.
- */
-export function buildReference(
-  module: string,
-  sequence: number,
-  now: Date = new Date(),
-): string {
-  const datePart = now.toISOString().slice(0, 10).replace(/-/g, '');
-  return `${module.toUpperCase()}-${datePart}-${String(sequence).padStart(4, '0')}`;
-}
 
 export async function list(
   studentId: string,
-  options: { module?: string; page: number; pageSize: number },
   actor: RequestActor,
-): Promise<Paginated<StudentModuleRecord>> {
-  // Ownership is enforced on the student, which governs its records too.
+): Promise<StudentRecordSummary[]> {
   await studentService.getById(studentId, actor);
-  return records.listRecords({ studentId, ...options });
+  return records.listForStudent(studentId);
 }
 
-export async function generate(
+export async function getById(
   studentId: string,
-  moduleKey: string,
-  count: number,
+  id: string,
   actor: RequestActor,
-): Promise<StudentModuleRecord[]> {
-  const student = await studentService.getById(studentId, actor);
+): Promise<StudentRecordEntry> {
+  await studentService.getById(studentId, actor);
+  const record = await records.findById(studentId, id);
+  if (!record) throw notFound('Generated record not found.');
+  return record;
+}
 
-  const module = findModule(moduleKey);
-  if (!module) {
-    throw badRequest('Choose a valid module.', { module: 'Unknown module' });
-  }
-  if (!module.roles.includes(actor.user.role)) {
-    throw forbidden('You do not have access to this module.');
-  }
-
-  // Continue the student's existing sequence for this module rather than
-  // restarting at 1 on every run.
-  const existing = await records.countForStudentModule(studentId, module.key);
-  const now = new Date();
-
-  const batch = Array.from({ length: count }, (_, index) => ({
-    studentId,
-    module: module.key,
-    reference: buildReference(module.key, existing + index + 1, now),
-    generatedBy: actor.user.id,
-  }));
-
-  const created = (await records.insertRecords(batch)).map((record) => ({
-    ...record,
-    generatedByName: actor.user.name,
-  }));
+export async function create(
+  studentId: string,
+  payload: records.RecordPayload,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  await studentService.getById(studentId, actor);
+  const created = await records.insertRecord(studentId, payload, actor.user.id);
 
   await recordAudit({
     userId: actor.user.id,
-    action: 'STUDENT_RECORDS_GENERATED',
-    entityType: 'student',
-    entityId: studentId,
-    metadata: { module: module.key, count: created.length, student: student.name },
+    action: 'STUDENT_RECORD_CREATED',
+    entityType: 'student_record',
+    entityId: created.id,
+    metadata: { studentId },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
 
   return created;
+}
+
+/**
+ * A finalized record is the student's agreed statement, so it is locked for
+ * everyone — administrators included — until someone unfinalizes it.
+ */
+async function assertEditable(studentId: string, id: string): Promise<StudentRecordSummary> {
+  const existing = await records.findSummary(studentId, id);
+  if (!existing) throw notFound('Generated record not found.');
+  if (existing.finalizedAt) {
+    throw conflict('This record is finalized. Unfinalize it before changing or deleting it.');
+  }
+  return existing;
+}
+
+export async function update(
+  studentId: string,
+  id: string,
+  payload: records.RecordPayload,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  await studentService.getById(studentId, actor);
+  await assertEditable(studentId, id);
+  const updated = await records.updateRecord(studentId, id, payload);
+  if (!updated) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_UPDATED',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return updated;
+}
+
+export async function remove(
+  studentId: string,
+  id: string,
+  actor: RequestActor,
+): Promise<void> {
+  await studentService.getById(studentId, actor);
+  await assertEditable(studentId, id);
+  const deleted = await records.deleteRecord(studentId, id);
+  if (!deleted) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_DELETED',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+}
+
+/** The statement page the record was generated from. */
+export async function getAttachment(
+  studentId: string,
+  id: string,
+  actor: RequestActor,
+): Promise<records.RecordAttachment> {
+  await studentService.getById(studentId, actor);
+  const attachment = await records.findAttachment(studentId, id);
+  if (!attachment) throw notFound('No statement page is stored for this record.');
+  return attachment;
+}
+
+/**
+ * Finalizing marks the one record that counts for a student. Only one can be
+ * finalized at a time, and the other one has to be released first — silently
+ * moving the flag would unlock a record someone had deliberately frozen.
+ */
+export async function finalize(
+  studentId: string,
+  id: string,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  await studentService.getById(studentId, actor);
+
+  const existing = await records.findSummary(studentId, id);
+  if (!existing) throw notFound('Generated record not found.');
+  if (existing.finalizedAt) return existing;
+
+  const alreadyFinal = await records.findFinalized(studentId);
+  if (alreadyFinal) {
+    throw conflict(
+      'Another record is already finalized for this student. Unfinalize that one first.',
+    );
+  }
+
+  const updated = await records.setFinalized(studentId, id, actor.user.id);
+  if (!updated) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_FINALIZED',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return updated;
+}
+
+export async function unfinalize(
+  studentId: string,
+  id: string,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  await studentService.getById(studentId, actor);
+
+  const updated = await records.setFinalized(studentId, id, null);
+  if (!updated) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_UNFINALIZED',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return updated;
 }

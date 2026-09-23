@@ -11,7 +11,7 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
-  width?: 'sm' | 'md';
+  width?: 'sm' | 'md' | 'lg';
 }
 
 /**
@@ -94,7 +94,11 @@ export function Modal({
         aria-modal="true"
         aria-label={title}
         className={`animate-in card my-auto w-full shadow-xl ${
-          width === 'sm' ? 'max-w-[480px]' : 'max-w-[640px]'
+          width === 'sm'
+            ? 'max-w-[480px]'
+            : width === 'lg'
+              ? 'max-w-[900px]'
+              : 'max-w-[640px]'
         }`}
       >
         <div className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-6 py-4">

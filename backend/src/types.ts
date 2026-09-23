@@ -20,6 +20,32 @@ export interface UserListItem extends UserRecord {
   activeSessions: number;
 }
 
+/** A generated statement listed on a student's page. */
+export interface StudentRecordSummary {
+  id: string;
+  studentId: string;
+  createdBy: string;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** File name of the statement page the record was generated from. */
+  attachmentName: string | null;
+  /** Set on the one record per student that has been finalized. */
+  finalizedAt: string | null;
+  finalizedBy: string | null;
+  finalizedByName: string | null;
+}
+
+/** The same record with the three payloads the module produced. */
+export interface StudentRecordEntry extends StudentRecordSummary {
+  /** What the Generate-record form collected. */
+  input: unknown;
+  /** Account block and salary periods read off the uploaded statement. */
+  extract: unknown;
+  /** accountInfo, salaryTrans and transactions as generated. */
+  statement: unknown;
+}
+
 export interface SessionRecord {
   id: string;
   userId: string;
@@ -32,27 +58,12 @@ export interface StudentRecord {
   name: string;
   mobileNumber: string;
   offerCompany: string | null;
-  companyVerified: boolean;
-  verifiedBy: string | null;
-  verifiedByName: string | null;
-  verifiedAt: string | null;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-/** A record generated for a student against one business module. */
-export interface StudentModuleRecord {
-  id: string;
-  studentId: string;
-  module: string;
-  reference: string;
-  status: string;
-  payload: Record<string, unknown>;
-  generatedBy: string;
-  generatedByName: string | null;
-  createdAt: string;
+  /** Set when the student was archived; archived students are hidden from users. */
+  archivedAt: string | null;
 }
 
 export interface Paginated<T> {

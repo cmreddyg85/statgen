@@ -6,14 +6,11 @@ interface StudentRow {
   name: string;
   mobile_number: string;
   offer_company: string | null;
-  company_verified: boolean;
-  verified_by: string | null;
-  verified_by_name: string | null;
-  verified_at: string | null;
   created_by: string;
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
 }
 
 function mapStudentRow(row: StudentRow): StudentRecord {
@@ -22,37 +19,34 @@ function mapStudentRow(row: StudentRow): StudentRecord {
     name: row.name,
     mobileNumber: row.mobile_number,
     offerCompany: row.offer_company,
-    companyVerified: row.company_verified,
-    verifiedBy: row.verified_by,
-    verifiedByName: row.verified_by_name,
-    verifiedAt: row.verified_at,
     createdBy: row.created_by,
     createdByName: row.created_by_name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    archivedAt: row.archived_at,
   };
 }
 
 const SELECT_STUDENT = `
-  SELECT s.id, s.name, s.mobile_number, s.offer_company, s.company_verified,
-         s.verified_by, vu.name AS verified_by_name, s.verified_at,
-         s.created_by, cu.name AS created_by_name, s.created_at, s.updated_at
+  SELECT s.id, s.name, s.mobile_number, s.offer_company,
+         s.created_by, cu.name AS created_by_name,
+         s.created_at, s.updated_at, s.archived_at
     FROM students s
-    LEFT JOIN users vu ON vu.id = s.verified_by
     LEFT JOIN users cu ON cu.id = s.created_by
 `;
 
+/** Archived students are returned too; visibility is decided by the service. */
 export async function findById(id: string): Promise<StudentRecord | null> {
-  const { rows } = await query<StudentRow>(
-    `${SELECT_STUDENT} WHERE s.id = $1 AND s.deleted_at IS NULL`,
-    [id],
-  );
+  const { rows } = await query<StudentRow>(`${SELECT_STUDENT} WHERE s.id = $1`, [id]);
   return rows[0] ? mapStudentRow(rows[0]) : null;
 }
 
+/** Which side of the archive to list. Only an admin may choose. */
+export type ArchiveScope = 'active' | 'archived' | 'all';
+
 export interface ListStudentsOptions {
   search?: string;
-  verified?: boolean;
+  status?: ArchiveScope;
   /** Restricts the list to records created by this user. */
   createdBy?: string;
   page: number;
@@ -62,8 +56,14 @@ export interface ListStudentsOptions {
 export async function listStudents(
   options: ListStudentsOptions,
 ): Promise<Paginated<StudentRecord>> {
-  const conditions = ['s.deleted_at IS NULL'];
+  const conditions: string[] = [];
   const params: QueryParam[] = [];
+
+  if (options.status === 'archived') {
+    conditions.push('s.archived_at IS NOT NULL');
+  } else if (options.status !== 'all') {
+    conditions.push('s.archived_at IS NULL');
+  }
 
   if (options.search) {
     params.push(`%${options.search}%`);
@@ -71,16 +71,13 @@ export async function listStudents(
       `(s.name ILIKE $${params.length} OR s.mobile_number ILIKE $${params.length} OR s.offer_company ILIKE $${params.length})`,
     );
   }
-  if (options.verified !== undefined) {
-    params.push(options.verified);
-    conditions.push(`s.company_verified = $${params.length}`);
-  }
   if (options.createdBy) {
     params.push(options.createdBy);
     conditions.push(`s.created_by = $${params.length}::uuid`);
   }
 
-  const where = `WHERE ${conditions.join(' AND ')}`;
+  // "All" with no search leaves nothing to filter on, so there is no WHERE.
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const totalResult = await query<{ count: string }>(
     `SELECT count(*)::text AS count FROM students s ${where}`,
@@ -111,23 +108,13 @@ export async function insertStudent(input: {
   name: string;
   mobileNumber: string;
   offerCompany: string | null;
-  companyVerified: boolean;
-  verifiedBy: string | null;
   createdBy: string;
 }): Promise<StudentRecord> {
   const { rows } = await query<{ id: string }>(
-    `INSERT INTO students
-       (name, mobile_number, offer_company, company_verified, verified_by, verified_at, created_by)
-     VALUES ($1, $2, $3, $4, $5, CASE WHEN $4 THEN now() ELSE NULL END, $6)
+    `INSERT INTO students (name, mobile_number, offer_company, created_by)
+     VALUES ($1, $2, $3, $4)
      RETURNING id`,
-    [
-      input.name,
-      input.mobileNumber,
-      input.offerCompany,
-      input.companyVerified,
-      input.verifiedBy,
-      input.createdBy,
-    ],
+    [input.name, input.mobileNumber, input.offerCompany, input.createdBy],
   );
   return (await findById(rows[0]!.id))!;
 }
@@ -160,62 +147,62 @@ export async function updateStudent(
   params.push(id);
   const { rowCount } = await query(
     `UPDATE students SET ${assignments.join(', ')}
-      WHERE id = $${params.length} AND deleted_at IS NULL`,
+      WHERE id = $${params.length} AND archived_at IS NULL`,
     params,
   );
   return rowCount ? findById(id) : null;
 }
 
-/**
- * Verification is a single conditional UPDATE so two concurrent requests
- * cannot both claim to be the verifier.
- */
-export async function setVerification(
-  id: string,
-  verified: boolean,
-  actorId: string,
-): Promise<StudentRecord | null> {
+/** Archiving and restoring are conditional updates, so a repeated click is a
+ * no-op rather than a second audit entry. */
+export async function archiveStudent(id: string): Promise<boolean> {
   const { rowCount } = await query(
-    `UPDATE students
-        SET company_verified = $2,
-            verified_by = CASE WHEN $2 THEN $3::uuid ELSE NULL END,
-            verified_at = CASE WHEN $2 THEN now() ELSE NULL END
-      WHERE id = $1 AND deleted_at IS NULL`,
-    [id, verified, actorId],
+    'UPDATE students SET archived_at = now() WHERE id = $1 AND archived_at IS NULL',
+    [id],
   );
-  return rowCount ? findById(id) : null;
+  return (rowCount ?? 0) > 0;
 }
 
-/** Soft delete (PRD 14.1): records are archived, never removed. */
-export async function softDeleteStudent(id: string): Promise<boolean> {
+export async function unarchiveStudent(id: string): Promise<boolean> {
   const { rowCount } = await query(
-    `UPDATE students SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`,
+    'UPDATE students SET archived_at = NULL WHERE id = $1 AND archived_at IS NOT NULL',
     [id],
   );
   return (rowCount ?? 0) > 0;
 }
 
 export interface StudentStats {
+  /** Students still in play; archived ones are counted separately. */
   total: number;
-  verified: number;
-  unverified: number;
+  archived: number;
 }
 
 /** `createdBy` scopes the counts to one owner; omitting it counts every record. */
 export async function getStudentStats(createdBy?: string): Promise<StudentStats> {
-  const { rows } = await query<{ total: string; verified: string; unverified: string }>(
-    `SELECT count(*)::text AS total,
-            count(*) FILTER (WHERE company_verified)::text AS verified,
-            count(*) FILTER (WHERE NOT company_verified)::text AS unverified
+  const { rows } = await query<{ total: string; archived: string }>(
+    `SELECT count(*) FILTER (WHERE archived_at IS NULL)::text AS total,
+            count(*) FILTER (WHERE archived_at IS NOT NULL)::text AS archived
        FROM students
-      WHERE deleted_at IS NULL
-        AND ($1::uuid IS NULL OR created_by = $1::uuid)`,
+      WHERE $1::uuid IS NULL OR created_by = $1::uuid`,
     [createdBy ?? null],
   );
   const row = rows[0]!;
-  return {
-    total: Number(row.total),
-    verified: Number(row.verified),
-    unverified: Number(row.unverified),
-  };
+  return { total: Number(row.total), archived: Number(row.archived) };
+}
+
+/**
+ * Permanent removal, administrators only. The student's generated records
+ * cascade with them, so the caller reports how many are going.
+ */
+export async function deleteStudent(id: string): Promise<boolean> {
+  const { rowCount } = await query('DELETE FROM students WHERE id = $1', [id]);
+  return (rowCount ?? 0) > 0;
+}
+
+export async function countRecords(studentId: string): Promise<number> {
+  const { rows } = await query<{ count: string }>(
+    'SELECT count(*)::text AS count FROM student_records WHERE student_id = $1',
+    [studentId],
+  );
+  return Number(rows[0]?.count ?? 0);
 }

@@ -87,9 +87,17 @@ interface SelectFieldProps {
   onChange: (value: string) => void;
   options: Array<{ value: string; label: string }>;
   className?: string;
+  error?: string;
 }
 
-export function SelectField({ label, value, onChange, options, className = '' }: SelectFieldProps) {
+export function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  className = '',
+  error,
+}: SelectFieldProps) {
   const id = useId();
   return (
     <div className={className}>
@@ -100,6 +108,8 @@ export function SelectField({ label, value, onChange, options, className = '' }:
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
         className="field-input cursor-pointer"
       >
         {options.map((option) => (
@@ -108,6 +118,11 @@ export function SelectField({ label, value, onChange, options, className = '' }:
           </option>
         ))}
       </select>
+      {error && (
+        <p className="field-error" id={`${id}-error`} role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

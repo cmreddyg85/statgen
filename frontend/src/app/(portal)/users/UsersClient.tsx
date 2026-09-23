@@ -17,6 +17,7 @@ import { Pagination } from '@/components/Pagination';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
 import { UserAuditDialog } from './UserAuditDialog';
+import { UserSessionsDialog } from './UserSessionsDialog';
 import { UserForm } from './UserForm';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -42,6 +43,7 @@ export function UsersClient() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
   const [viewingActivity, setViewingActivity] = useState<User | null>(null);
+  const [viewingSessions, setViewingSessions] = useState<User | null>(null);
   const [deactivating, setDeactivating] = useState<User | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
 
@@ -239,10 +241,17 @@ export function UsersClient() {
                         </td>
                         <td className="whitespace-nowrap">
                           {user.activeSessions > 0 ? (
-                            <Badge tone="success">
-                              <StatusDot tone="success" />
-                              {user.activeSessions}
-                            </Badge>
+                            <button
+                              type="button"
+                              onClick={() => setViewingSessions(user)}
+                              title="Show these sessions"
+                              className="rounded-full focus-visible:outline-2"
+                            >
+                              <Badge tone="success">
+                                <StatusDot tone="success" />
+                                {user.activeSessions}
+                              </Badge>
+                            </button>
                           ) : (
                             <span className="text-[var(--color-muted)]">—</span>
                           )}
@@ -270,7 +279,7 @@ export function UsersClient() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-[var(--color-danger)] hover:bg-red-50"
+                                className="w-[104px] text-[var(--color-danger)] hover:bg-red-50"
                                 onClick={() => setDeactivating(user)}
                               >
                                 Deactivate
@@ -279,6 +288,7 @@ export function UsersClient() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                className="w-[104px]"
                                 loading={actionPending === user.id}
                                 onClick={() => activate(user)}
                               >
@@ -321,6 +331,11 @@ export function UsersClient() {
         onClose={() => setViewingActivity(null)}
       />
 
+      <UserSessionsDialog
+        user={viewingSessions}
+        onClose={() => setViewingSessions(null)}
+      />
+
       <ConfirmDialog
         open={deactivating !== null}
         title="Deactivate user"
@@ -334,6 +349,7 @@ export function UsersClient() {
         onConfirm={confirmDeactivate}
         onCancel={() => setDeactivating(null)}
       />
+
     </>
   );
 }

@@ -101,7 +101,6 @@ export const createStudentSchema = z.object({
   name: nameSchema,
   mobileNumber: mobileNumberSchema,
   offerCompany: offerCompanySchema,
-  companyVerified: z.boolean().default(false),
 });
 
 export const updateStudentSchema = z
@@ -116,24 +115,34 @@ export const updateStudentSchema = z
 
 export const listStudentsQuerySchema = paginationSchema.extend({
   search: z.string().trim().max(120).optional(),
-  verified: z
-    .enum(['true', 'false'])
-    .transform((value) => value === 'true')
-    .optional(),
+  // Admin-only: users never see archived students.
+  status: z.enum(['active', 'archived', 'all']).optional(),
   // Admin-only filter. A non-admin request is scoped to its own records
   // regardless of what is passed here (see student-access.ts).
   createdBy: z.string().uuid('Invalid user identifier').optional(),
 });
 
-export const generateRecordsSchema = z.object({
-  module: z.string().trim().min(1, 'Choose a module'),
-  count: z.coerce.number().int().min(1).max(50).default(5),
-});
-
-export const listRecordsQuerySchema = paginationSchema.extend({
-  module: z.string().trim().min(1).optional(),
-});
-
 export const uuidParamSchema = z.object({
   id: z.string().uuid('Invalid identifier'),
+});
+
+export const recordParamsSchema = z.object({
+  id: z.string().uuid('Invalid identifier'),
+  recordId: z.string().uuid('Invalid record identifier'),
+});
+
+/**
+ * A generated statement is stored as produced, so the payloads are only
+ * checked for shape — except `invalidDates`, which must be empty: a statement
+ * whose transactions are out of order is never stored.
+ */
+export const studentRecordSchema = z.object({
+  input: z.record(z.unknown()),
+  extract: z.record(z.unknown()),
+  statement: z
+    .object({ invalidDates: z.array(z.unknown()).optional() })
+    .passthrough()
+    .refine((value) => (value.invalidDates?.length ?? 0) === 0, {
+      message: 'The generated transactions are out of order, so nothing was saved.',
+    }),
 });

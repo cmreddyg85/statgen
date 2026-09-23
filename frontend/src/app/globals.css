@@ -41,6 +41,14 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  /* Anything clickable says so. Tailwind's reset leaves buttons on the
+     default arrow, which reads as "not clickable". */
+  button:not(:disabled),
+  summary,
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
   /* Visible focus everywhere — keyboard users must never lose their place. */
   :focus-visible {
     outline: 2px solid var(--color-primary);

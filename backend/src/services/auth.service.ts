@@ -1,4 +1,5 @@
 import { recordAudit } from './audit.service.js';
+import { describeClient } from './network-info.js';
 import { verifyPassword } from './password.service.js';
 import { createSession, type CreatedSession } from './session.service.js';
 import * as users from '../repositories/user.repository.js';
@@ -48,7 +49,11 @@ export async function login(
   }
 
   const { passwordHash: _passwordHash, ...user } = record;
-  const created = await createSession({ user, ...context });
+  // Where the sign-in came from: address, the network that owns it, the
+  // machine and — on the local network — its MAC. Kept on the session as well
+  // as in the audit trail, so active sessions can be inspected later.
+  const client = await describeClient(context.ipAddress, context.userAgent);
+  const created = await createSession({ user, ...context, clientInfo: client });
   await users.touchLastLogin(user.id);
 
   await recordAudit({
@@ -56,7 +61,7 @@ export async function login(
     action: 'LOGIN_SUCCESS',
     entityType: 'user',
     entityId: user.id,
-    metadata: { role: user.role, expiresAt: created.session.expiresAt },
+    metadata: { role: user.role, expiresAt: created.session.expiresAt, ...client },
     ipAddress: context.ipAddress,
     userAgent: context.userAgent,
   });

@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { formatDateTime, formatMobile } from '@/lib/format';
-import type { Paginated, Student, StudentModuleRecord } from '@/lib/types';
+import type { Student } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
 import { LinkButton } from '@/components/Button';
 import { PageHeader } from '@/components/PageHeader';
 import { ErrorState, LoadingState } from '@/components/States';
+import { RecordsTable } from './RecordsTable';
 
 /**
  * A single student: their details, and the records generated for them.
@@ -17,7 +18,6 @@ import { ErrorState, LoadingState } from '@/components/States';
  */
 export function StudentDetail({ studentId }: { studentId: string }) {
   const [student, setStudent] = useState<Student | null>(null);
-  const [records, setRecords] = useState<Paginated<StudentModuleRecord> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,14 +25,8 @@ export function StudentDetail({ studentId }: { studentId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const [studentResult, recordResult] = await Promise.all([
-        api.get<{ student: Student }>(`/students/${studentId}`),
-        api.get<Paginated<StudentModuleRecord>>(`/students/${studentId}/records`, {
-          query: { page: 1, pageSize: 5 },
-        }),
-      ]);
-      setStudent(studentResult.student);
-      setRecords(recordResult);
+      const { student: found } = await api.get<{ student: Student }>(`/students/${studentId}`);
+      setStudent(found);
     } catch (caught) {
       setError(
         caught instanceof ApiError
@@ -92,12 +86,12 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           student.createdByName ?? 'unknown'
         }.`}
         actions={
-          <LinkButton href={`/students/${student.id}/generate`}>Generate</LinkButton>
+          <LinkButton href={`/students/${student.id}/generate`}>Generate record</LinkButton>
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <section className="card lg:col-span-2">
+      <div className="grid gap-4">
+        <section className="card">
           <h2 className="border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
             Student details
           </h2>
@@ -105,29 +99,19 @@ export function StudentDetail({ studentId }: { studentId: string }) {
             <Detail label="Mobile number" value={formatMobile(student.mobileNumber)} />
             <Detail label="Offer company" value={student.offerCompany ?? '—'} />
             <Detail
-              label="Company verification"
+              label="Status"
               value={
-                student.companyVerified ? (
-                  <Badge tone="success">
-                    <StatusDot tone="success" />
-                    Verified
-                  </Badge>
-                ) : (
+                student.archivedAt ? (
                   <Badge tone="neutral">
                     <StatusDot tone="neutral" />
-                    Unverified
+                    Archived {formatDateTime(student.archivedAt)}
+                  </Badge>
+                ) : (
+                  <Badge tone="success">
+                    <StatusDot tone="success" />
+                    Active
                   </Badge>
                 )
-              }
-            />
-            <Detail
-              label="Verified by"
-              value={
-                student.companyVerified
-                  ? `${student.verifiedByName ?? 'Unknown'} · ${formatDateTime(
-                      student.verifiedAt,
-                    )}`
-                  : '—'
               }
             />
             <Detail label="Created by" value={student.createdByName ?? '—'} />
@@ -135,52 +119,7 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           </dl>
         </section>
 
-        <section className="card">
-          <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-3.5">
-            <h2 className="text-[15px] font-semibold">Generated records</h2>
-            {records && records.total > 0 && (
-              <Badge tone="info">{records.total}</Badge>
-            )}
-          </div>
-
-          {records && records.items.length > 0 ? (
-            <>
-              <ul className="divide-y divide-[#e2e8f0]">
-                {records.items.map((record) => (
-                  <li key={record.id} className="px-5 py-3">
-                    <p className="font-mono text-[13px] font-medium">{record.reference}</p>
-                    <p className="text-xs text-[var(--color-muted)]">
-                      {record.module.toUpperCase()} · {formatDateTime(record.createdAt)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-              <div className="border-t border-[var(--color-line)] px-5 py-3">
-                <Link
-                  href={`/students/${student.id}/generate`}
-                  className="text-[13px] font-semibold text-[var(--color-primary)] hover:underline"
-                >
-                  View all and generate more
-                </Link>
-              </div>
-            </>
-          ) : (
-            <div className="px-5 py-8 text-center">
-              <p className="text-[13px] text-[var(--color-muted)]">
-                No records generated for this student yet.
-              </p>
-              <div className="mt-3">
-                <LinkButton
-                  href={`/students/${student.id}/generate`}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Generate records
-                </LinkButton>
-              </div>
-            </div>
-          )}
-        </section>
+        <RecordsTable studentId={student.id} />
       </div>
     </>
   );

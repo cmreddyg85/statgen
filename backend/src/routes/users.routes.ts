@@ -125,6 +125,16 @@ usersRouter.post(
   }),
 );
 
+/** GET /api/v1/users/:id/sessions — where this user is signed in right now. */
+usersRouter.get(
+  '/:id/sessions',
+  validate(uuidParamSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id } = routeParams<{ id: string }>(req);
+    res.json({ sessions: await userService.activeSessions(id) });
+  }),
+);
+
 /** POST /api/v1/users/:id/reset-password */
 usersRouter.post(
   '/:id/reset-password',

@@ -18,7 +18,8 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
 import { StudentForm } from './StudentForm';
 
-type VerificationFilter = 'all' | 'verified' | 'unverified';
+/** Admin-only: a user is always scoped to active students. */
+type StatusFilter = 'active' | 'archived' | 'all';
 
 /**
  * Table-first Students screen (PRD 12.4).
@@ -37,7 +38,7 @@ export function StudentsClient() {
 
   const [searchInput, setSearchInput] = useState('');
   const search = useDebounced(searchInput.trim());
-  const [verification, setVerification] = useState<VerificationFilter>('all');
+  const [status, setStatus] = useState<StatusFilter>('active');
   const [createdBy, setCreatedBy] = useState('all');
   const [owners, setOwners] = useState<User[]>([]);
   const [page, setPage] = useState(1);
@@ -45,6 +46,7 @@ export function StudentsClient() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState<Student | null>(null);
+  const [purging, setPurging] = useState<Student | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
 
   // Only an admin can filter by owner, and only an admin may call /users.
@@ -66,7 +68,7 @@ export function StudentsClient() {
             page,
             pageSize: 20,
             search: search || undefined,
-            verified: verification === 'all' ? undefined : String(verification === 'verified'),
+            status: isAdmin ? status : undefined,
             createdBy: isAdmin && createdBy !== 'all' ? createdBy : undefined,
           },
         }),
@@ -76,7 +78,7 @@ export function StudentsClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, verification, createdBy, isAdmin]);
+  }, [page, search, status, createdBy, isAdmin]);
 
   // A new search term starts from the first page again.
   useEffect(() => setPage(1), [search]);
@@ -85,18 +87,31 @@ export function StudentsClient() {
     void load();
   }, [load]);
 
-  const toggleVerification = async (student: Student) => {
+  /** Admin only: brings an archived student back into the list. */
+  const unarchive = async (student: Student) => {
     setActionPending(student.id);
     try {
-      await api.post(
-        `/students/${student.id}/${student.companyVerified ? 'unverify-company' : 'verify-company'}`,
-      );
-      toast.success(
-        student.companyVerified ? 'Company marked unverified.' : 'Company verified.',
-      );
+      await api.post(`/students/${student.id}/unarchive`);
+      toast.success('Student restored.');
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not update verification.');
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not restore the student.');
+    } finally {
+      setActionPending(null);
+    }
+  };
+
+  /** Admin only: removes the student and everything generated for them. */
+  const confirmPurge = async () => {
+    if (!purging) return;
+    setActionPending(purging.id);
+    try {
+      await api.delete(`/students/${purging.id}/permanent`);
+      toast.success('Student deleted.');
+      setPurging(null);
+      await load();
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not delete the student.');
     } finally {
       setActionPending(null);
     }
@@ -107,17 +122,17 @@ export function StudentsClient() {
     setActionPending(deleting.id);
     try {
       await api.delete(`/students/${deleting.id}`);
-      toast.success('Student deleted.');
+      toast.success('Student archived.');
       setDeleting(null);
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not delete student.');
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not archive student.');
     } finally {
       setActionPending(null);
     }
   };
 
-  const filtersApplied = search !== '' || verification !== 'all' || createdBy !== 'all';
+  const filtersApplied = search !== '' || status !== 'active' || createdBy !== 'all';
 
   return (
     <>
@@ -150,20 +165,22 @@ export function StudentsClient() {
               onChange={(event) => setSearchInput(event.target.value)}
             />
           </div>
-          <SelectField
-            label="Verification"
-            className="w-[180px]"
-            value={verification}
-            onChange={(value) => {
-              setVerification(value as VerificationFilter);
-              setPage(1);
-            }}
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'verified', label: 'Verified' },
-              { value: 'unverified', label: 'Unverified' },
-            ]}
-          />
+          {isAdmin && (
+            <SelectField
+              label="Status"
+              className="w-[160px]"
+              value={status}
+              onChange={(value) => {
+                setStatus(value as StatusFilter);
+                setPage(1);
+              }}
+              options={[
+                { value: 'active', label: 'Active' },
+                { value: 'archived', label: 'Archived' },
+                { value: 'all', label: 'All' },
+              ]}
+            />
+          )}
           {isAdmin && (
             <SelectField
               label="Created by"
@@ -187,7 +204,7 @@ export function StudentsClient() {
               variant="ghost"
               onClick={() => {
                 setSearchInput('');
-                setVerification('all');
+                setStatus('active');
                 setCreatedBy('all');
                 setPage(1);
               }}
@@ -233,7 +250,7 @@ export function StudentsClient() {
                     <th scope="col">Name</th>
                     <th scope="col">Mobile</th>
                     <th scope="col">Offer company</th>
-                    <th scope="col">Verification</th>
+                    {isAdmin && status !== 'active' && <th scope="col">Status</th>}
                     {isAdmin && <th scope="col">Created by</th>}
                     <th scope="col">Created</th>
                     <th scope="col" className="col-actions text-right">
@@ -254,19 +271,21 @@ export function StudentsClient() {
                       </td>
                       <td className="tabular-nums">{formatMobile(student.mobileNumber)}</td>
                       <td>{student.offerCompany ?? <span className="text-[var(--color-muted)]">—</span>}</td>
-                      <td>
-                        {student.companyVerified ? (
-                          <Badge tone="success">
-                            <StatusDot tone="success" />
-                            Verified
-                          </Badge>
-                        ) : (
-                          <Badge tone="neutral">
-                            <StatusDot tone="neutral" />
-                            Unverified
-                          </Badge>
-                        )}
-                      </td>
+                      {isAdmin && status !== 'active' && (
+                        <td>
+                          {student.archivedAt ? (
+                            <Badge tone="neutral">
+                              <StatusDot tone="neutral" />
+                              Archived
+                            </Badge>
+                          ) : (
+                            <Badge tone="success">
+                              <StatusDot tone="success" />
+                              Active
+                            </Badge>
+                          )}
+                        </td>
+                      )}
                       {isAdmin && (
                         <td className="text-[var(--color-muted)]">
                           {student.createdByName ?? '—'}
@@ -287,22 +306,37 @@ export function StudentsClient() {
                           >
                             Edit
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            loading={actionPending === student.id}
-                            onClick={() => toggleVerification(student)}
-                          >
-                            {student.companyVerified ? 'Unverify' : 'Verify'}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-[var(--color-danger)] hover:bg-red-50"
-                            onClick={() => setDeleting(student)}
-                          >
-                            Delete
-                          </Button>
+                          {student.archivedAt ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-[104px]"
+                              disabled={!isAdmin}
+                              loading={actionPending === student.id}
+                              onClick={() => unarchive(student)}
+                            >
+                              Unarchive
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-[104px] text-[var(--color-danger)] hover:bg-red-50"
+                              onClick={() => setDeleting(student)}
+                            >
+                              Archive
+                            </Button>
+                          )}
+                          {isAdmin && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-[var(--color-danger)] hover:bg-red-50"
+                              onClick={() => setPurging(student)}
+                            >
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -335,16 +369,30 @@ export function StudentsClient() {
 
       <ConfirmDialog
         open={deleting !== null}
-        title="Delete student"
+        title="Archive student"
         message={
           deleting
-            ? `Delete ${deleting.name}? The record is archived rather than erased, and can be restored by an administrator.`
+            ? `Archive ${deleting.name}? The record and everything generated for it are kept, and an administrator can restore it.`
             : ''
         }
-        confirmLabel="Delete student"
+        confirmLabel="Archive student"
         loading={actionPending === deleting?.id}
         onConfirm={confirmDelete}
         onCancel={() => setDeleting(null)}
+      />
+
+      <ConfirmDialog
+        open={purging !== null}
+        title="Delete student"
+        message={
+          purging
+            ? `Permanently delete ${purging.name}? Every record generated for them, and the statement pages attached to those records, go with it. This cannot be undone — archive instead if you only want them out of the way.`
+            : ''
+        }
+        confirmLabel="Delete permanently"
+        loading={actionPending === purging?.id}
+        onConfirm={confirmPurge}
+        onCancel={() => setPurging(null)}
       />
     </>
   );

@@ -61,7 +61,8 @@ export function onSessionInvalid(listener: SessionExpiredListener): () => void {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  /** A FormData body is sent as-is so the browser sets the multipart boundary. */
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined>;
   signal?: AbortSignal;
@@ -79,8 +80,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
   }
 
+  const isMultipart = typeof FormData !== 'undefined' && body instanceof FormData;
+
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !isMultipart) headers['Content-Type'] = 'application/json';
 
   if (method !== 'GET') {
     const csrfToken = readCsrfToken();
@@ -94,7 +97,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       headers,
       credentials: 'same-origin',
       cache: 'no-store',
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isMultipart ? (body as FormData) : JSON.stringify(body),
       signal,
     });
   } catch (error) {
@@ -128,6 +131,49 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 }
 
 /**
+ * Posts JSON and hands back the response body as a Blob. Used for the
+ * endpoints that answer with a file rather than JSON.
+ */
+export async function apiBlob(path: string, body: unknown): Promise<Blob> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const csrfToken = readCsrfToken();
+  if (csrfToken) headers['x-csrf-token'] = csrfToken;
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    credentials: 'same-origin',
+    cache: 'no-store',
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new ApiError(
+      response.status,
+      payload?.error ?? {
+        code: 'INTERNAL_ERROR',
+        message: 'Something went wrong. Please try again.',
+      },
+    );
+  }
+
+  return response.blob();
+}
+
+/** Saves a blob to the visitor's downloads. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Routes a failed request into a form's state: field errors when the server
  * named the fields, a single form-level message otherwise.
  */
@@ -150,6 +196,8 @@ export const api = {
     apiRequest<T>(path, { ...options, method: 'GET' }),
   post: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method'>) =>
     apiRequest<T>(path, { ...options, method: 'POST', body }),
+  put: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method'>) =>
+    apiRequest<T>(path, { ...options, method: 'PUT', body }),
   patch: <T>(path: string, body?: unknown, options?: Omit<RequestOptions, 'method'>) =>
     apiRequest<T>(path, { ...options, method: 'PATCH', body }),
   delete: <T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) =>

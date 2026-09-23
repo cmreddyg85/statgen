@@ -13,7 +13,8 @@ import { notFound } from '../utils/errors.js';
 
 export interface ListOptions {
   search?: string;
-  verified?: boolean;
+  /** Honoured for admins only; a user only ever sees active students. */
+  status?: students.ArchiveScope;
   /** Honoured for admins only; a user is always scoped to their own records. */
   createdBy?: string;
   page: number;
@@ -24,8 +25,10 @@ export async function list(
   options: ListOptions,
   actor: RequestActor,
 ): Promise<Paginated<StudentRecord>> {
+  const isAdmin = actor.user.role === 'ADMIN';
   return students.listStudents({
     ...options,
+    status: isAdmin ? (options.status ?? 'active') : 'active',
     createdBy: listScopeFor(actor.user, options.createdBy),
   });
 }
@@ -33,6 +36,11 @@ export async function list(
 export async function getById(id: string, actor: RequestActor): Promise<StudentRecord> {
   const student = await students.findById(id);
   if (!student) throw notFound('Student not found.');
+
+  // Archiving hides the student from its owner; only an admin still sees it.
+  if (student.archivedAt && actor.user.role !== 'ADMIN') {
+    throw notFound('Student not found.');
+  }
 
   if (!canAccessStudent(actor.user, student)) {
     await recordAudit({
@@ -53,19 +61,12 @@ export async function getById(id: string, actor: RequestActor): Promise<StudentR
 }
 
 export async function create(
-  input: {
-    name: string;
-    mobileNumber: string;
-    offerCompany: string | null;
-    companyVerified: boolean;
-  },
+  input: { name: string; mobileNumber: string; offerCompany: string | null },
   actor: RequestActor,
 ): Promise<StudentRecord> {
   const student = await students.insertStudent({
     ...input,
-    // Ownership and verifier attribution both come from the session, never
-    // from the payload.
-    verifiedBy: input.companyVerified ? actor.user.id : null,
+    // Ownership comes from the session, never from the payload.
     createdBy: actor.user.id,
   });
 
@@ -74,7 +75,7 @@ export async function create(
     action: 'STUDENT_CREATED',
     entityType: 'student',
     entityId: student.id,
-    metadata: { name: student.name, companyVerified: student.companyVerified },
+    metadata: { name: student.name },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
@@ -106,34 +107,56 @@ export async function update(
   return updated;
 }
 
-export async function setVerification(
-  id: string,
-  verified: boolean,
-  actor: RequestActor,
-): Promise<StudentRecord> {
-  await getById(id, actor);
+/**
+ * "Deleting" a student archives them: the row and its generated records stay,
+ * the owner stops seeing it, and an administrator can restore it.
+ */
+export async function archive(id: string, actor: RequestActor): Promise<void> {
+  const existing = await getById(id, actor);
 
-  const updated = await students.setVerification(id, verified, actor.user.id);
-  if (!updated) throw notFound('Student not found.');
+  const archived = await students.archiveStudent(id);
+  if (!archived) throw notFound('Student not found.');
 
   await recordAudit({
     userId: actor.user.id,
-    action: verified ? 'STUDENT_COMPANY_VERIFIED' : 'STUDENT_COMPANY_UNVERIFIED',
+    action: 'STUDENT_ARCHIVED',
     entityType: 'student',
     entityId: id,
-    metadata: { offerCompany: updated.offerCompany },
+    metadata: { name: existing.name },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+}
+
+/** Admin only — the route enforces the role. */
+export async function unarchive(id: string, actor: RequestActor): Promise<StudentRecord> {
+  const existing = await getById(id, actor);
+
+  const restored = await students.unarchiveStudent(id);
+  if (!restored) throw notFound('Student not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_UNARCHIVED',
+    entityType: 'student',
+    entityId: id,
+    metadata: { name: existing.name },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
 
-  return updated;
+  return (await students.findById(id))!;
 }
 
-/** Soft delete only — history is preserved (PRD 14.1). */
+/**
+ * Permanent deletion, administrators only — the route enforces the role.
+ * Everything generated for the student goes with them.
+ */
 export async function remove(id: string, actor: RequestActor): Promise<void> {
   const existing = await getById(id, actor);
+  const records = await students.countRecords(id);
 
-  const deleted = await students.softDeleteStudent(id);
+  const deleted = await students.deleteStudent(id);
   if (!deleted) throw notFound('Student not found.');
 
   await recordAudit({
@@ -141,7 +164,7 @@ export async function remove(id: string, actor: RequestActor): Promise<void> {
     action: 'STUDENT_DELETED',
     entityType: 'student',
     entityId: id,
-    metadata: { name: existing.name, softDelete: true },
+    metadata: { name: existing.name, deletedRecords: records },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });

@@ -45,6 +45,8 @@ export async function createSession(input: {
   user: UserRecord;
   ipAddress: string | null;
   userAgent: string | null;
+  /** What the sign-in was made from, as resolved at login. */
+  clientInfo?: unknown;
 }): Promise<CreatedSession> {
   const token = generateSessionToken();
   const expiresAt = computeExpiry(input.user.role);
@@ -55,8 +57,8 @@ export async function createSession(input: {
     created_at: string;
     expires_at: string;
   }>(
-    `INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent)
-     VALUES ($1, $2, $3, $4::inet, $5)
+    `INSERT INTO sessions (user_id, token_hash, expires_at, ip_address, user_agent, client_info)
+     VALUES ($1, $2, $3, $4::inet, $5, $6::jsonb)
      RETURNING id, user_id, created_at, expires_at`,
     [
       input.user.id,
@@ -64,6 +66,7 @@ export async function createSession(input: {
       expiresAt.toISOString(),
       input.ipAddress,
       input.userAgent?.slice(0, 400) ?? null,
+      input.clientInfo ? JSON.stringify(input.clientInfo) : null,
     ],
   );
 
@@ -174,4 +177,42 @@ export async function purgeExpiredSessions(olderThanDays = 7): Promise<number> {
     [String(olderThanDays)],
   );
   return rowCount ?? 0;
+}
+
+/** One live session of a user, as User Management shows it. */
+export interface ActiveSession {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  /** What was resolved about the machine at sign-in; null for older sessions. */
+  clientInfo: Record<string, unknown> | null;
+}
+
+/** Sessions that are neither revoked nor expired, newest first. */
+export async function listActiveSessionsForUser(userId: string): Promise<ActiveSession[]> {
+  const { rows } = await query<{
+    id: string;
+    created_at: string;
+    expires_at: string;
+    ip_address: string | null;
+    user_agent: string | null;
+    client_info: Record<string, unknown> | null;
+  }>(
+    `SELECT id, created_at, expires_at, host(ip_address) AS ip_address, user_agent, client_info
+       FROM sessions
+      WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > now()
+      ORDER BY created_at DESC`,
+    [userId],
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    ipAddress: row.ip_address,
+    userAgent: row.user_agent,
+    clientInfo: row.client_info,
+  }));
 }

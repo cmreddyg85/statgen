@@ -209,3 +209,4 @@ export async function countOtherActiveAdmins(excludingUserId: string): Promise<n
   );
   return Number(rows[0]?.count ?? 0);
 }
+

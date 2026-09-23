@@ -23,7 +23,6 @@ describe('student validation', () => {
     });
     expect(result.name).toBe('Asha Menon');
     expect(result.mobileNumber).toBe('9876543210');
-    expect(result.companyVerified).toBe(false);
   });
 
   it('turns a blank offer company into null', () => {
@@ -128,8 +127,9 @@ describe('list query validation', () => {
     expect(listStudentsQuerySchema.safeParse({ pageSize: '5000' }).success).toBe(false);
   });
 
-  it('coerces the verified filter to a boolean', () => {
-    expect(listStudentsQuerySchema.parse({ verified: 'true' }).verified).toBe(true);
-    expect(listStudentsQuerySchema.parse({ verified: 'false' }).verified).toBe(false);
+  it('accepts only the three archive scopes', () => {
+    expect(listStudentsQuerySchema.parse({ status: 'archived' }).status).toBe('archived');
+    expect(listStudentsQuerySchema.parse({}).status).toBeUndefined();
+    expect(() => listStudentsQuerySchema.parse({ status: 'deleted' })).toThrow();
   });
 });

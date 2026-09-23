@@ -79,7 +79,7 @@ export function AdminDashboard() {
                 label="Students"
                 value={stats.students.total}
                 href="/students"
-                hint={`${stats.students.verified} verified · ${stats.students.unverified} unverified`}
+                hint={`${stats.students.archived} archived`}
               />
             </div>
           </section>

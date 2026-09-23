@@ -1,8 +1,10 @@
 import { recordAudit } from './audit.service.js';
 import { hashPassword } from './password.service.js';
 import {
+  listActiveSessionsForUser,
   revokeAllSessionsForUser,
   revokeOtherSessionsForUser,
+  type ActiveSession,
 } from './session.service.js';
 import * as users from '../repositories/user.repository.js';
 import type { Paginated, RequestActor, UserRecord } from '../types.js';
@@ -196,4 +198,10 @@ async function revokeSessionsAndAudit(
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
+}
+
+/** Admin view of everywhere a user is currently signed in. */
+export async function activeSessions(id: string): Promise<ActiveSession[]> {
+  await getById(id);
+  return listActiveSessionsForUser(id);
 }

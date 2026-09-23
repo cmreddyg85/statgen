@@ -31,8 +31,7 @@ export function UserDashboard({ name }: { name: string }) {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard label="Your students" value={stats?.total} />
-        <StatCard label="Verified" value={stats?.verified} tone="success" />
-        <StatCard label="Unverified" value={stats?.unverified} tone="muted" />
+        <StatCard label="Archived" value={stats?.archived} tone="muted" />
       </div>
 
       <Link
@@ -47,7 +46,7 @@ export function UserDashboard({ name }: { name: string }) {
             Students
           </span>
           <span className="mt-0.5 block text-[13px] text-[var(--color-muted)]">
-            Add students, verify offer companies and generate module records.
+            Add students and generate their records.
           </span>
         </span>
       </Link>

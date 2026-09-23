@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, applyApiError } from '@/lib/api';
 import type { Student } from '@/lib/types';
 import { Button } from '@/components/Button';
-import { CheckboxField, TextField } from '@/components/Field';
+import { TextField } from '@/components/Field';
 import { Modal } from '@/components/Modal';
 
 interface StudentFormProps {
@@ -21,7 +21,6 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
   const [name, setName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [offerCompany, setOfferCompany] = useState('');
-  const [companyVerified, setCompanyVerified] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -31,7 +30,6 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
     setName(student?.name ?? '');
     setMobileNumber(student?.mobileNumber ?? '');
     setOfferCompany(student?.offerCompany ?? '');
-    setCompanyVerified(student?.companyVerified ?? false);
     setFormError(null);
     setFieldErrors({});
   }, [open, student]);
@@ -51,20 +49,12 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
           mobileNumber: mobileNumber.trim(),
           offerCompany: offerCompany.trim(),
         });
-
-        // Verification carries its own audit trail, so it has its own endpoint.
-        if (companyVerified !== student.companyVerified) {
-          await api.post(
-            `/students/${student.id}/${companyVerified ? 'verify-company' : 'unverify-company'}`,
-          );
-        }
         onSaved('Student updated.');
       } else {
         await api.post('/students', {
           name: name.trim(),
           mobileNumber: mobileNumber.trim(),
           offerCompany: offerCompany.trim(),
-          companyVerified,
         });
         onSaved('Student created.');
       }
@@ -133,14 +123,6 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
           hint="Optional. Up to 150 characters."
           disabled={saving}
           autoComplete="off"
-        />
-
-        <CheckboxField
-          label="Company verified"
-          description="Records who verified the offer company and when."
-          checked={companyVerified}
-          onChange={(event) => setCompanyVerified(event.target.checked)}
-          disabled={saving}
         />
       </form>
     </Modal>
