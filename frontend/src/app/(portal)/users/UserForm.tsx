@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { api, applyApiError } from '@/lib/api';
 import type { User } from '@/lib/types';
 import { Button } from '@/components/Button';
 import { CheckboxField, TextField } from '@/components/Field';
@@ -27,7 +27,6 @@ export function UserForm({ open, user, onClose, onSaved }: UserFormProps) {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [active, setActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -38,7 +37,6 @@ export function UserForm({ open, user, onClose, onSaved }: UserFormProps) {
     setName(user?.name ?? '');
     setUsername(user?.username ?? '');
     setPassword('');
-    setShowPassword(false);
     setActive(user?.active ?? true);
     setFormError(null);
     setFieldErrors({});
@@ -68,12 +66,7 @@ export function UserForm({ open, user, onClose, onSaved }: UserFormProps) {
         onSaved('User created.');
       }
     } catch (error) {
-      if (error instanceof ApiError) {
-        setFieldErrors(error.fields ?? {});
-        setFormError(error.fields ? null : error.message);
-      } else {
-        setFormError('Something went wrong. Please try again.');
-      }
+      applyApiError(error, setFieldErrors, setFormError);
       setSaving(false);
     }
   };
@@ -139,7 +132,7 @@ export function UserForm({ open, user, onClose, onSaved }: UserFormProps) {
         <TextField
           label={isEdit ? 'New password' : 'Password'}
           required={!isEdit}
-          type={showPassword ? 'text' : 'password'}
+          type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           error={fieldErrors.password ?? fieldErrors.newPassword}
@@ -150,16 +143,6 @@ export function UserForm({ open, user, onClose, onSaved }: UserFormProps) {
           }
           disabled={saving}
           autoComplete="new-password"
-          trailing={
-            <button
-              type="button"
-              onClick={() => setShowPassword((value) => !value)}
-              className="rounded px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-blue-50"
-              aria-pressed={showPassword}
-            >
-              {showPassword ? 'Hide' : 'Show'}
-            </button>
-          }
         />
 
         <CheckboxField

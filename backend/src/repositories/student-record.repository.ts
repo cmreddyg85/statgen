@@ -97,7 +97,10 @@ export interface NewRecord {
   generatedBy: string;
 }
 
-/** Inserts the whole batch in one statement so a generate run is atomic. */
+/**
+ * Inserts the whole batch in one statement, so a generate run is atomic.
+ * `generatedByName` is left null — the caller knows who is generating.
+ */
 export async function insertRecords(
   records: NewRecord[],
 ): Promise<StudentModuleRecord[]> {
@@ -112,17 +115,12 @@ export async function insertRecords(
     values.push(`($${base + 1}::uuid, $${base + 2}, $${base + 3}, $${base + 4}::uuid)`);
   }
 
-  const { rows } = await query<{ id: string }>(
+  const { rows } = await query<Omit<RecordRow, 'generated_by_name'>>(
     `INSERT INTO student_module_records (student_id, module, reference, generated_by)
      VALUES ${values.join(', ')}
-     RETURNING id`,
+     RETURNING id, student_id, module, reference, status, payload, generated_by, created_at`,
     params,
   );
 
-  const ids = rows.map((row) => row.id);
-  const { rows: inserted } = await query<RecordRow>(
-    `${SELECT_RECORD} WHERE r.id = ANY($1::uuid[]) ORDER BY r.reference`,
-    [ids as unknown as QueryParam],
-  );
-  return inserted.map(mapRow);
+  return rows.map((row) => mapRow({ ...row, generated_by_name: null }));
 }

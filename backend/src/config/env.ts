@@ -1,9 +1,9 @@
-import 'dotenv/config';
 import { z } from 'zod';
 
 /**
  * Every environment value the API depends on is declared here and validated at
- * boot. The process refuses to start with an invalid configuration so that a
+ * boot. `.env` is loaded by node's own --env-file-if-exists flag (see the npm
+ * scripts), so real environment variables alone are enough in production. The process refuses to start with an invalid configuration so that a
  * misconfigured deployment fails loudly instead of running insecurely.
  */
 const booleanish = z

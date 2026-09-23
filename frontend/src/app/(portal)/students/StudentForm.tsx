@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { api, applyApiError } from '@/lib/api';
 import type { Student } from '@/lib/types';
 import { Button } from '@/components/Button';
 import { CheckboxField, TextField } from '@/components/Field';
@@ -69,12 +69,7 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
         onSaved('Student created.');
       }
     } catch (error) {
-      if (error instanceof ApiError) {
-        setFieldErrors(error.fields ?? {});
-        setFormError(error.fields ? null : error.message);
-      } else {
-        setFormError('Something went wrong. Please try again.');
-      }
+      applyApiError(error, setFieldErrors, setFormError);
       setSaving(false);
     }
   };

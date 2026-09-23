@@ -4,8 +4,7 @@ export interface NavItem {
   label: string;
   href: string;
   roles: Role[];
-  description: string;
-  icon: 'home' | 'bank' | 'wallet' | 'mail' | 'students' | 'users';
+  icon: 'home' | 'students' | 'users';
 }
 
 /**
@@ -21,21 +20,18 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Home',
     href: '/',
     roles: ['ADMIN', 'USER'],
-    description: 'Your landing dashboard',
     icon: 'home',
   },
   {
     label: 'Students',
     href: '/students',
     roles: ['ADMIN', 'USER'],
-    description: 'Student records and company verification',
     icon: 'students',
   },
   {
     label: 'Users',
     href: '/users',
     roles: ['ADMIN'],
-    description: 'Manage portal accounts',
     icon: 'users',
   },
 ];

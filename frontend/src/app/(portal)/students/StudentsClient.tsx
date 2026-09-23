@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
+import { useDebounced } from '@/lib/use-debounced';
 import { formatMobile } from '@/lib/format';
 import { useSession } from '@/lib/session-context';
 import type { Paginated, Student, User } from '@/lib/types';
@@ -35,7 +36,7 @@ export function StudentsClient() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const search = useDebounced(searchInput.trim());
   const [verification, setVerification] = useState<VerificationFilter>('all');
   const [createdBy, setCreatedBy] = useState('all');
   const [owners, setOwners] = useState<User[]>([]);
@@ -45,15 +46,6 @@ export function StudentsClient() {
   const [editing, setEditing] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState<Student | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
-
-  // Debounce the search box so typing does not issue a request per keystroke.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
 
   // Only an admin can filter by owner, and only an admin may call /users.
   useEffect(() => {
@@ -85,6 +77,9 @@ export function StudentsClient() {
       setLoading(false);
     }
   }, [page, search, verification, createdBy, isAdmin]);
+
+  // A new search term starts from the first page again.
+  useEffect(() => setPage(1), [search]);
 
   useEffect(() => {
     void load();

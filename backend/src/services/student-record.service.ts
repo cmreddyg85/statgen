@@ -1,4 +1,4 @@
-import { findModule, type ModuleKey } from '../config/modules.js';
+import { findModule } from '../config/modules.js';
 import * as records from '../repositories/student-record.repository.js';
 import * as studentService from './student.service.js';
 import { recordAudit } from './audit.service.js';
@@ -13,10 +13,6 @@ import { badRequest, forbidden } from '../utils/errors.js';
  * status) and an empty `payload` for the integration to fill. Nothing
  * invented is presented as real business data.
  */
-
-/** Batch size when the caller does not ask for a specific count. */
-export const DEFAULT_GENERATE_COUNT = 5;
-export const MAX_GENERATE_COUNT = 50;
 
 /**
  * `SBI-20260922-0007` — module, date, and a per-student running sequence, so
@@ -56,11 +52,6 @@ export async function generate(
   if (!module.roles.includes(actor.user.role)) {
     throw forbidden('You do not have access to this module.');
   }
-  if (count < 1 || count > MAX_GENERATE_COUNT) {
-    throw badRequest(`Generate between 1 and ${MAX_GENERATE_COUNT} records.`, {
-      count: `Enter a number between 1 and ${MAX_GENERATE_COUNT}`,
-    });
-  }
 
   // Continue the student's existing sequence for this module rather than
   // restarting at 1 on every run.
@@ -74,7 +65,10 @@ export async function generate(
     generatedBy: actor.user.id,
   }));
 
-  const created = await records.insertRecords(batch);
+  const created = (await records.insertRecords(batch)).map((record) => ({
+    ...record,
+    generatedByName: actor.user.name,
+  }));
 
   await recordAudit({
     userId: actor.user.id,
@@ -88,5 +82,3 @@ export async function generate(
 
   return created;
 }
-
-export type { ModuleKey };

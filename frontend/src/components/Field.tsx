@@ -1,16 +1,18 @@
 'use client';
 
-import { useId, type InputHTMLAttributes, type ReactNode } from 'react';
+import { useId, useState, type InputHTMLAttributes } from 'react';
 
 interface TextFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
   label: string;
   error?: string;
   hint?: string;
-  trailing?: ReactNode;
 }
 
-export function TextField({ label, error, hint, trailing, ...props }: TextFieldProps) {
+/** A password field reveals itself; every other type renders plainly. */
+export function TextField({ label, error, hint, ...props }: TextFieldProps) {
   const id = useId();
+  const [revealed, setRevealed] = useState(false);
+  const isPassword = props.type === 'password';
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 
   return (
@@ -22,13 +24,21 @@ export function TextField({ label, error, hint, trailing, ...props }: TextFieldP
       <div className="relative">
         <input
           {...props}
+          type={isPassword && revealed ? 'text' : props.type}
           id={id}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
-          className={`field-input ${trailing ? 'pr-20' : ''} ${props.className ?? ''}`}
+          className={`field-input ${isPassword ? 'pr-20' : ''} ${props.className ?? ''}`}
         />
-        {trailing && (
-          <div className="absolute inset-y-0 right-2 flex items-center">{trailing}</div>
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setRevealed((value) => !value)}
+            aria-pressed={revealed}
+            className="absolute inset-y-0 right-2 my-auto h-7 rounded px-2 text-xs font-semibold text-[var(--color-primary)] hover:bg-blue-50"
+          >
+            {revealed ? 'Hide' : 'Show'}
+          </button>
         )}
       </div>
       {error ? (

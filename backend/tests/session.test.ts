@@ -5,7 +5,6 @@ import {
   hashSessionToken,
   isExpired,
   sessionLifetimeMs,
-  sessionTokenMatches,
 } from '../src/services/session.service.js';
 
 describe('session lifetime', () => {
@@ -53,11 +52,5 @@ describe('session tokens', () => {
     expect(hash).toBe(hashSessionToken(token));
     expect(hash).not.toContain(token);
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
-  });
-
-  it('matches only the originating token', () => {
-    const token = generateSessionToken();
-    expect(sessionTokenMatches(token, hashSessionToken(token))).toBe(true);
-    expect(sessionTokenMatches(generateSessionToken(), hashSessionToken(token))).toBe(false);
   });
 });

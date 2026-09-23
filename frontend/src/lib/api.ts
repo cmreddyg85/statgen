@@ -127,6 +127,24 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return payload as T;
 }
 
+/**
+ * Routes a failed request into a form's state: field errors when the server
+ * named the fields, a single form-level message otherwise.
+ */
+export function applyApiError(
+  error: unknown,
+  setFieldErrors: (fields: Record<string, string>) => void,
+  setFormError: (message: string | null) => void,
+): void {
+  if (error instanceof ApiError) {
+    setFieldErrors(error.fields ?? {});
+    setFormError(error.fields ? null : error.message);
+    return;
+  }
+  setFieldErrors({});
+  setFormError('Something went wrong. Please try again.');
+}
+
 export const api = {
   get: <T>(path: string, options?: Omit<RequestOptions, 'method' | 'body'>) =>
     apiRequest<T>(path, { ...options, method: 'GET' }),

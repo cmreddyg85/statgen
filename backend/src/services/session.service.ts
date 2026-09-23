@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { env } from '../config/env.js';
 import { query } from '../db/pool.js';
 import type { Role, SessionRecord, UserRecord } from '../types.js';
@@ -18,13 +18,6 @@ export function generateSessionToken(): string {
 
 export function hashSessionToken(token: string): string {
   return createHmac('sha256', env.SESSION_SECRET_OR_PEPPER).update(token).digest('hex');
-}
-
-/** Constant-time comparison helper for token hashes. */
-export function sessionTokenMatches(token: string, storedHash: string): boolean {
-  const computed = Buffer.from(hashSessionToken(token), 'utf8');
-  const stored = Buffer.from(storedHash, 'utf8');
-  return computed.length === stored.length && timingSafeEqual(computed, stored);
 }
 
 /** Absolute session lifetime in milliseconds, by role. */
@@ -140,13 +133,6 @@ export async function revokeSession(sessionId: string): Promise<void> {
   await query(
     `UPDATE sessions SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL`,
     [sessionId],
-  );
-}
-
-export async function revokeSessionByToken(token: string): Promise<void> {
-  await query(
-    `UPDATE sessions SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL`,
-    [hashSessionToken(token)],
   );
 }
 

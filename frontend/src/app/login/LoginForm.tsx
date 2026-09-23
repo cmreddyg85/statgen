@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { api, applyApiError } from '@/lib/api';
 import type { SessionResponse } from '@/lib/types';
 import { Button } from '@/components/Button';
 import { TextField } from '@/components/Field';
@@ -17,7 +17,6 @@ export function LoginForm({ reason, nextPath }: { reason?: string; nextPath?: st
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -54,12 +53,7 @@ export function LoginForm({ reason, nextPath }: { reason?: string; nextPath?: st
       router.replace(result.user.role === 'ADMIN' ? safeNext : safeNext);
       router.refresh();
     } catch (error) {
-      if (error instanceof ApiError) {
-        setFieldErrors(error.fields ?? {});
-        setFormError(error.fields ? null : error.message);
-      } else {
-        setFormError('Something went wrong. Please try again.');
-      }
+      applyApiError(error, setFieldErrors, setFormError);
       setSubmitting(false);
     }
   };
@@ -99,23 +93,13 @@ export function LoginForm({ reason, nextPath }: { reason?: string; nextPath?: st
       <TextField
         label="Password"
         name="password"
-        type={showPassword ? 'text' : 'password'}
+        type="password"
         autoComplete="current-password"
         required
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         error={fieldErrors.password}
         disabled={submitting}
-        trailing={
-          <button
-            type="button"
-            onClick={() => setShowPassword((value) => !value)}
-            className="rounded px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-blue-50"
-            aria-pressed={showPassword}
-          >
-            {showPassword ? 'Hide' : 'Show'}
-          </button>
-        }
       />
 
       <Button type="submit" loading={submitting} className="mt-1 w-full">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ApiError, api } from '@/lib/api';
+import { useDebounced } from '@/lib/use-debounced';
 
 import { useSession } from '@/lib/session-context';
 import type { Paginated, User, UserListItem } from '@/lib/types';
@@ -31,7 +32,7 @@ export function UsersClient() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const search = useDebounced(searchInput.trim());
   const [status, setStatus] = useState<StatusFilter>(() => {
     const initial = searchParams.get('status');
     return initial === 'active' || initial === 'inactive' ? initial : 'all';
@@ -43,14 +44,6 @@ export function UsersClient() {
   const [viewingActivity, setViewingActivity] = useState<User | null>(null);
   const [deactivating, setDeactivating] = useState<User | null>(null);
   const [actionPending, setActionPending] = useState<string | null>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setSearch(searchInput.trim());
-      setPage(1);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchInput]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +65,9 @@ export function UsersClient() {
       setLoading(false);
     }
   }, [page, search, status]);
+
+  // A new search term starts from the first page again.
+  useEffect(() => setPage(1), [search]);
 
   useEffect(() => {
     void load();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { api, applyApiError } from '@/lib/api';
 import { Button } from './Button';
 import { TextField } from './Field';
 import { Modal } from './Modal';
@@ -22,7 +22,6 @@ export function ChangePasswordDialog({
   const toast = useToast();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -31,7 +30,6 @@ export function ChangePasswordDialog({
     if (!open) return;
     setNewPassword('');
     setConfirmPassword('');
-    setShowPassword(false);
     setFormError(null);
     setFieldErrors({});
   }, [open]);
@@ -63,28 +61,13 @@ export function ChangePasswordDialog({
       );
       onClose();
     } catch (error) {
-      if (error instanceof ApiError) {
-        setFieldErrors(error.fields ?? {});
-        setFormError(error.fields ? null : error.message);
-      } else {
-        setFormError('Something went wrong. Please try again.');
-      }
+      applyApiError(error, setFieldErrors, setFormError);
       setSaving(false);
       return;
     }
     setSaving(false);
   };
 
-  const toggleVisibility = (
-    <button
-      type="button"
-      onClick={() => setShowPassword((value) => !value)}
-      className="rounded px-2 py-1 text-xs font-semibold text-[var(--color-primary)] hover:bg-blue-50"
-      aria-pressed={showPassword}
-    >
-      {showPassword ? 'Hide' : 'Show'}
-    </button>
-  );
 
   return (
     <Modal
@@ -127,20 +110,19 @@ export function ChangePasswordDialog({
           label="New password"
           required
           autoFocus
-          type={showPassword ? 'text' : 'password'}
+          type="password"
           value={newPassword}
           onChange={(event) => setNewPassword(event.target.value)}
           error={fieldErrors.newPassword}
           hint="At least 12 characters."
           disabled={saving}
           autoComplete="new-password"
-          trailing={toggleVisibility}
         />
 
         <TextField
           label="Re-enter new password"
           required
-          type={showPassword ? 'text' : 'password'}
+          type="password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
           error={fieldErrors.confirmPassword}

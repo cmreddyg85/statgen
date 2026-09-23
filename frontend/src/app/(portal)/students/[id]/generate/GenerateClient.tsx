@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
+import { ApiError, api, applyApiError } from '@/lib/api';
 import type {
   ModuleOption,
   Paginated,
@@ -102,12 +102,9 @@ export function GenerateClient({ studentId }: { studentId: string }) {
       setPage(1);
       await loadRecords();
     } catch (caught) {
-      if (caught instanceof ApiError) {
-        setFieldErrors(caught.fields ?? {});
-        if (!caught.fields) toast.error(caught.message);
-      } else {
-        toast.error('Could not generate records.');
-      }
+      applyApiError(caught, setFieldErrors, (message) => {
+        if (message) toast.error(message);
+      });
     } finally {
       setGenerating(false);
     }
