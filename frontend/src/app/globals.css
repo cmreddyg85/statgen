@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source('..');
 
 /* Design tokens — PRD section 11.1. */
 @theme {

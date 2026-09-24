@@ -9,6 +9,7 @@ import {
   listUsersQuerySchema,
   paginationSchema,
   resetPasswordSchema,
+  sessionParamsSchema,
   updateUserSchema,
   uuidParamSchema,
 } from '../validation/schemas.js';
@@ -132,6 +133,28 @@ usersRouter.get(
   asyncHandler(async (req, res) => {
     const { id } = routeParams<{ id: string }>(req);
     res.json({ sessions: await userService.activeSessions(id) });
+  }),
+);
+
+/** DELETE /api/v1/users/:id/sessions — signs the user out of every device. */
+usersRouter.delete(
+  '/:id/sessions',
+  validate(uuidParamSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id } = routeParams<{ id: string }>(req);
+    await userService.revokeAllSessions(id, getActor(req));
+    res.json({ success: true });
+  }),
+);
+
+/** DELETE /api/v1/users/:id/sessions/:sessionId — signs the user out of that device. */
+usersRouter.delete(
+  '/:id/sessions/:sessionId',
+  validate(sessionParamsSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id, sessionId } = routeParams<{ id: string; sessionId: string }>(req);
+    await userService.revokeSession(id, sessionId, getActor(req));
+    res.json({ success: true });
   }),
 );
 

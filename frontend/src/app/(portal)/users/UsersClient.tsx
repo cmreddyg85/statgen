@@ -334,6 +334,7 @@ export function UsersClient() {
       <UserSessionsDialog
         user={viewingSessions}
         onClose={() => setViewingSessions(null)}
+        onChanged={() => void load()}
       />
 
       <ConfirmDialog

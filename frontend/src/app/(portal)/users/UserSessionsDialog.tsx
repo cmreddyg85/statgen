@@ -15,9 +15,12 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 export function UserSessionsDialog({
   user,
   onClose,
+  onChanged,
 }: {
   user: User | null;
   onClose: () => void;
+  /** Called after a session is revoked, so the users table count refreshes. */
+  onChanged?: () => void;
 }) {
   const [sessions, setSessions] = useState<ActiveSession[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,6 +41,27 @@ export function UserSessionsDialog({
       setLoading(false);
     }
   }, [user]);
+
+  const [revoking, setRevoking] = useState<string | null>(null);
+
+  /** One session by id, or every session with 'all'. */
+  async function revoke(sessionId: string) {
+    const all = sessionId === 'all';
+    const prompt = all
+      ? 'Sign this user out of all devices now?'
+      : 'Sign this user out of that device now?';
+    if (!user || !window.confirm(prompt)) return;
+    setRevoking(sessionId);
+    try {
+      await api.delete(`/users/${user.id}/sessions${all ? '' : `/${sessionId}`}`);
+      onChanged?.();
+      await load();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : 'Could not end the session.');
+    } finally {
+      setRevoking(null);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -67,6 +91,19 @@ export function UserSessionsDialog({
         />
       ) : (
         <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-[var(--color-muted)]">
+              {sessions.length} active {sessions.length === 1 ? 'session' : 'sessions'}
+            </span>
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={revoking !== null}
+              onClick={() => void revoke('all')}
+            >
+              {revoking === 'all' ? 'Signing out…' : 'Sign out from all devices'}
+            </Button>
+          </div>
           {sessions.map((session, index) => {
             const client = session.clientInfo ?? {};
             return (
@@ -79,9 +116,19 @@ export function UserSessionsDialog({
                     {client.browser ?? 'Unknown browser'}
                     {client.operatingSystem ? ` on ${client.operatingSystem}` : ''}
                   </h3>
-                  <span className="text-xs text-[var(--color-muted)]">
-                    Session {index + 1} · expires {formatRelative(session.expiresAt)}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-[var(--color-muted)]">
+                      Session {index + 1} · expires {formatRelative(session.expiresAt)}
+                    </span>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      disabled={revoking !== null}
+                      onClick={() => void revoke(session.id)}
+                    >
+                      {revoking === session.id ? 'Ending…' : 'End session'}
+                    </Button>
+                  </div>
                 </div>
 
                 <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2">

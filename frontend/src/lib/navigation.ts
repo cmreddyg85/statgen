@@ -1,10 +1,10 @@
-import type { Role } from './types';
+import type { Role } from "./types";
 
 export interface NavItem {
   label: string;
   href: string;
   roles: Role[];
-  icon: 'home' | 'students' | 'users' | 'sbi';
+  icon: "home" | "students" | "users" | "sbi";
 }
 
 /**
@@ -17,28 +17,28 @@ export interface NavItem {
  */
 export const NAV_ITEMS: NavItem[] = [
   {
-    label: 'Home',
-    href: '/',
-    roles: ['ADMIN', 'USER'],
-    icon: 'home',
+    label: "Home",
+    href: "/",
+    roles: ["ADMIN", "USER"],
+    icon: "home",
   },
   {
-    label: 'Students',
-    href: '/students',
-    roles: ['ADMIN', 'USER'],
-    icon: 'students',
+    label: "Users",
+    href: "/users",
+    roles: ["ADMIN"],
+    icon: "users",
   },
   {
-    label: 'Users',
-    href: '/users',
-    roles: ['ADMIN'],
-    icon: 'users',
+    label: "Students",
+    href: "/students",
+    roles: ["ADMIN", "USER"],
+    icon: "students",
   },
   {
-    label: 'SBI',
-    href: '/sbi',
-    roles: ['ADMIN'],
-    icon: 'sbi',
+    label: "SBI",
+    href: "/sbi",
+    roles: ["ADMIN"],
+    icon: "sbi",
   },
 ];
 
@@ -48,7 +48,7 @@ export function navItemsForRole(role: Role): NavItem[] {
 
 export function pageTitleForPath(pathname: string): string {
   const match = NAV_ITEMS.find((item) =>
-    item.href === '/' ? pathname === '/' : pathname.startsWith(item.href),
+    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),
   );
-  return match?.label ?? 'Portal';
+  return match?.label ?? "Portal";
 }

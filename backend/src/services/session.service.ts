@@ -139,6 +139,16 @@ export async function revokeSession(sessionId: string): Promise<void> {
   );
 }
 
+/** Admin sign-out of one device; scoped to the user so ids can't cross accounts. */
+export async function revokeUserSession(userId: string, sessionId: string): Promise<boolean> {
+  const { rowCount } = await query(
+    `UPDATE sessions SET revoked_at = now()
+      WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL AND expires_at > now()`,
+    [sessionId, userId],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 /** Used when an account is deactivated or its password is reset. */
 export async function revokeAllSessionsForUser(userId: string): Promise<number> {
   const { rowCount } = await query(

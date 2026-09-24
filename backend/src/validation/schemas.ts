@@ -126,6 +126,11 @@ export const uuidParamSchema = z.object({
   id: z.string().uuid('Invalid identifier'),
 });
 
+export const sessionParamsSchema = z.object({
+  id: z.string().uuid('Invalid identifier'),
+  sessionId: z.string().uuid('Invalid session identifier'),
+});
+
 export const recordParamsSchema = z.object({
   id: z.string().uuid('Invalid identifier'),
   recordId: z.string().uuid('Invalid record identifier'),

@@ -4,6 +4,7 @@ import {
   listActiveSessionsForUser,
   revokeAllSessionsForUser,
   revokeOtherSessionsForUser,
+  revokeUserSession,
   type ActiveSession,
 } from './session.service.js';
 import * as users from '../repositories/user.repository.js';
@@ -186,7 +187,7 @@ async function assertNotLastActiveAdmin(user: UserRecord): Promise<void> {
 async function revokeSessionsAndAudit(
   userId: string,
   actor: RequestActor,
-  action: 'USER_DEACTIVATED',
+  action: 'USER_DEACTIVATED' | 'USER_SESSIONS_REVOKED',
 ): Promise<void> {
   const revoked = await revokeAllSessionsForUser(userId);
   await recordAudit({
@@ -204,4 +205,31 @@ async function revokeSessionsAndAudit(
 export async function activeSessions(id: string): Promise<ActiveSession[]> {
   await getById(id);
   return listActiveSessionsForUser(id);
+}
+
+/** Signs a user out of one device, as picked in the Active sessions dialog. */
+export async function revokeSession(
+  userId: string,
+  sessionId: string,
+  actor: RequestActor,
+): Promise<void> {
+  const user = await getById(userId);
+  if (!(await revokeUserSession(userId, sessionId))) {
+    throw notFound('Session not found or already ended.');
+  }
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'USER_SESSION_REVOKED',
+    entityType: 'user',
+    entityId: userId,
+    metadata: { username: user.username, sessionId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+}
+
+/** Signs a user out of every device at once. */
+export async function revokeAllSessions(userId: string, actor: RequestActor): Promise<void> {
+  await getById(userId);
+  await revokeSessionsAndAudit(userId, actor, 'USER_SESSIONS_REVOKED');
 }
