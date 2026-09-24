@@ -8,6 +8,7 @@ import {
   createStudentSchema,
   listStudentsQuerySchema,
   recordParamsSchema,
+  statementPdfSchema,
   studentRecordSchema,
   updateStudentSchema,
   uuidParamSchema,
@@ -276,6 +277,64 @@ studentsRouter.post(
   asyncHandler(async (req, res) => {
     const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
     res.json({ record: await recordService.unfinalize(id, recordId, getActor(req)) });
+  }),
+);
+
+/**
+ * POST /api/v1/students/:id/records/:recordId/show-download — administrators
+ * only: releases the clean statement of a finalized record to its owner.
+ */
+studentsRouter.post(
+  '/:id/records/:recordId/show-download',
+  requireRole('ADMIN'),
+  validate(recordParamsSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    res.json({
+      record: await recordService.setDownloadReleased(id, recordId, true, getActor(req)),
+    });
+  }),
+);
+
+/** POST /api/v1/students/:id/records/:recordId/hide-download — takes it back. */
+studentsRouter.post(
+  '/:id/records/:recordId/hide-download',
+  requireRole('ADMIN'),
+  validate(recordParamsSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    res.json({
+      record: await recordService.setDownloadReleased(id, recordId, false, getActor(req)),
+    });
+  }),
+);
+
+/** POST /api/v1/students/:id/records/:recordId/statement-pdf */
+studentsRouter.post(
+  '/:id/records/:recordId/statement-pdf',
+  validate(recordParamsSchema, 'params'),
+  validate(statementPdfSchema),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    const options = body<{
+      fromDate: string;
+      toDate: string;
+      dateOfStatement?: string;
+      dummy: boolean;
+      protect: boolean;
+      password?: string;
+    }>(req);
+
+    const { pdf, fileName } = await recordService.statementPdf(
+      id,
+      recordId,
+      options,
+      getActor(req),
+    );
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(pdf);
   }),
 );
 

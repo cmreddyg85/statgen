@@ -98,6 +98,8 @@ export function parseDetails(details) {
     companies,
     salaryDay,
     nextWorkingDay: Boolean(data.nextWorkingDay),
+    // Used to encrypt a generated statement, when one is asked for.
+    pdfPassword: String(data.pdfPassword ?? ""),
     // The form's default is true: the final settlement lands the month after
     // the last relieving date. False drops that last credit entirely.
     fullAndFinalCredited: data.fullAndFinalCredited !== false,

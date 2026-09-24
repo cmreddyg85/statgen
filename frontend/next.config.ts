@@ -8,6 +8,9 @@ const apiOrigin = process.env.API_ORIGIN ?? 'http://localhost:4000';
  * cross-site cookie rules) exactly as the PRD's production topology intends.
  */
 const nextConfig: NextConfig = {
+  // Verification builds set this so they never write into the .next directory
+  // a running dev server is using.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   reactStrictMode: true,
   poweredByHeader: false,
   devIndicators: false,

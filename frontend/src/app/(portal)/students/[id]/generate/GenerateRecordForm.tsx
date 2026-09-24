@@ -353,11 +353,21 @@ export function GenerateRecordForm({
 
             <div className="sm:col-span-2">
               <TextField
-                label="PDF password"
+                label="Uploaded statement password"
                 type="password"
                 value={pdfPassword}
                 onChange={(event) => setPdfPassword(event.target.value)}
-                hint="Only if the uploaded statement is protected."
+                hint="Only if the statement you are uploading is protected."
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <TextField
+                label="Password for generated PDF"
+                type="password"
+                value={form.pdfPassword}
+                onChange={(event) => set('pdfPassword', event.target.value)}
+                hint="Optional. Offered when downloading a statement from this record."
               />
             </div>
           </div>

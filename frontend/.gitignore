@@ -6,3 +6,6 @@ build/
 .env.local
 next-env.d.ts
 *.tsbuildinfo
+
+# verification builds (kept out of the dev server's .next)
+.next-verify/

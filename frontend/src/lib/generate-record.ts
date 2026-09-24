@@ -29,6 +29,8 @@ export interface GenerateRecordInput {
   nextWorkingDay: boolean;
   fullAndFinalCredited: boolean;
   documentName: string | null;
+  /** Protects the statements generated from this record, when asked for. */
+  pdfPassword: string;
 }
 
 /** Errors keyed by field path, e.g. `companies.0.hikes.1.date`. */
@@ -57,6 +59,7 @@ export const emptyForm = (): GenerateRecordInput => ({
   nextWorkingDay: false,
   fullAndFinalCredited: true,
   documentName: null,
+  pdfPassword: '',
 });
 
 const isMoney = (value: string): boolean => /^\d+(\.\d{1,2})?$/.test(value.trim());
@@ -163,6 +166,7 @@ export function toPayload(form: GenerateRecordInput) {
     nextWorkingDay: form.nextWorkingDay,
     fullAndFinalCredited: form.fullAndFinalCredited,
     bankStatementFirstPage: form.documentName,
+    pdfPassword: form.pdfPassword.trim(),
     companies: form.companies.map((company) => ({
       name: company.name.trim(),
       joiningDate: company.joiningDate,
@@ -196,6 +200,7 @@ interface StoredPayload {
   nextWorkingDay?: boolean;
   fullAndFinalCredited?: boolean;
   bankStatementFirstPage?: string | null;
+  pdfPassword?: string;
 }
 
 const text = (value: number | string | undefined): string =>
@@ -225,5 +230,6 @@ export function fromPayload(payload: StoredPayload): GenerateRecordInput {
     nextWorkingDay: Boolean(payload.nextWorkingDay),
     fullAndFinalCredited: payload.fullAndFinalCredited !== false,
     documentName: payload.bankStatementFirstPage ?? null,
+    pdfPassword: payload.pdfPassword ?? '',
   };
 }

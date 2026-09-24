@@ -262,7 +262,13 @@ const getRandomDate = () => {
   const start = new Date("2015-01-01").getTime();
   const end = new Date("2019-12-31").getTime();
 
-  const randomDate = new Date(start + Math.random() * (end - start));
+  let randomDate;
+  let dayOfWeek;
+
+  do {
+    randomDate = new Date(start + Math.random() * (end - start));
+    dayOfWeek = randomDate.getDay(); // 0 = Sun, 6 = Sat
+  } while (dayOfWeek === 0 || dayOfWeek === 6);
 
   const day = String(randomDate.getDate()).padStart(2, "0");
   const month = String(randomDate.getMonth() + 1).padStart(2, "0");
@@ -374,7 +380,7 @@ async function extractSbiAccountInfo(pdfBuffer, password, details = {}) {
       // dateOfStatement: left.fields.dateOfStatement || "",
       // fromDate,
       // toDate,
-      password: "",
+      password: form.pdfPassword,
     },
     numberOfCreditsTransactions: [1, 3],
     numberOfDebitsTransactions: [15, 20],

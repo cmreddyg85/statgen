@@ -34,6 +34,9 @@ export interface StudentRecordSummary {
   finalizedAt: string | null;
   finalizedBy: string | null;
   finalizedByName: string | null;
+  /** Set when an admin released the un-watermarked statement to the owner. */
+  downloadReleasedAt: string | null;
+  downloadReleasedBy: string | null;
 }
 
 /** The same record with the three payloads the module produced. */
@@ -43,6 +46,28 @@ export interface StudentRecordEntry extends StudentRecordSummary {
   /** Account block and salary periods read off the uploaded statement. */
   extract: unknown;
   /** accountInfo, salaryTrans and transactions as generated. */
+  statement: unknown;
+}
+
+/** Where a standalone SBI report's payload came from. */
+export type SbiReportSource = 'extract' | 'transactions';
+
+/** A report as listed on the SBI screen. */
+export interface SbiReportSummary {
+  id: string;
+  source: SbiReportSource;
+  customerName: string | null;
+  accountNumber: string | null;
+  transactionCount: number;
+  createdBy: string;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The same report with the pasted payload and what was built from it. */
+export interface SbiReportEntry extends SbiReportSummary {
+  input: unknown;
   statement: unknown;
 }
 

@@ -15,6 +15,8 @@ interface RecordRow {
   finalized_at: string | null;
   finalized_by: string | null;
   finalized_by_name: string | null;
+  download_released_at: string | null;
+  download_released_by: string | null;
 }
 
 type SummaryRow = Omit<RecordRow, 'input_json' | 'extract_json' | 'statement_json'>;
@@ -31,6 +33,8 @@ function mapSummary(row: SummaryRow): StudentRecordSummary {
     finalizedAt: row.finalized_at,
     finalizedBy: row.finalized_by,
     finalizedByName: row.finalized_by_name,
+    downloadReleasedAt: row.download_released_at,
+    downloadReleasedBy: row.download_released_by,
   };
 }
 
@@ -45,7 +49,8 @@ function mapRecord(row: RecordRow): StudentRecordEntry {
 
 const COLUMNS = `r.id, r.student_id, r.created_by, u.name AS created_by_name,
                  r.created_at, r.updated_at, r.attachment_name,
-                 r.finalized_at, r.finalized_by, f.name AS finalized_by_name`;
+                 r.finalized_at, r.finalized_by, f.name AS finalized_by_name,
+                 r.download_released_at, r.download_released_by`;
 
 /** Both name joins every query needs: who generated it, who finalized it. */
 const JOINS = `LEFT JOIN users u ON u.id = r.created_by
@@ -222,7 +227,31 @@ export async function setFinalized(
     `WITH changed AS (
        UPDATE student_records
           SET finalized_at = CASE WHEN $3::uuid IS NULL THEN NULL ELSE now() END,
-              finalized_by = $3::uuid
+              finalized_by = $3::uuid,
+              -- Releasing the download refers to the finalized statement, so
+              -- unfinalizing takes it back.
+              download_released_at = CASE WHEN $3::uuid IS NULL THEN NULL ELSE download_released_at END,
+              download_released_by = CASE WHEN $3::uuid IS NULL THEN NULL ELSE download_released_by END
+        WHERE student_id = $1 AND id = $2
+        RETURNING *
+     )
+     SELECT ${COLUMNS} FROM changed r ${JOINS}`,
+    [studentId, id, userId],
+  );
+  return rows[0] ? mapSummary(rows[0]) : null;
+}
+
+/** Releases the un-watermarked statement to the record's owner, or withdraws it. */
+export async function setDownloadReleased(
+  studentId: string,
+  id: string,
+  userId: string | null,
+): Promise<StudentRecordSummary | null> {
+  const { rows } = await query<SummaryRow>(
+    `WITH changed AS (
+       UPDATE student_records
+          SET download_released_at = CASE WHEN $3::uuid IS NULL THEN NULL ELSE now() END,
+              download_released_by = $3::uuid
         WHERE student_id = $1 AND id = $2
         RETURNING *
      )

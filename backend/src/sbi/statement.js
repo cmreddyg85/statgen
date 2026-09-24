@@ -7,7 +7,16 @@ import { PDFDocument } from "@cantoo/pdf-lib";
 import { chromium } from "playwright";
 import icons from "./icons.js";
 
-export async function createSbiStatementPdf(accountInfo = {}, transactions = []) {
+/**
+ * @param {Record<string, any>} [accountInfo]
+ * @param {Array<Record<string, any>>} [transactions]
+ * @param {{ watermark?: string | null }} [options]
+ */
+export async function createSbiStatementPdf(
+  accountInfo = {},
+  transactions = [],
+  { watermark = null } = {},
+) {
     // Helper: format number to Indian style with 2 decimals
     function formatToIndianDenomination(balance) {
       if (typeof balance !== "string" && typeof balance !== "number")
@@ -221,6 +230,24 @@ export async function createSbiStatementPdf(accountInfo = {}, transactions = [])
           box-shadow: none;
           page-break-after: always;
         }
+      }
+
+      /* Stamped across every page of a preview copy. A fixed element is
+         repeated on each printed page by Chromium. */
+      .watermark {
+        position: fixed;
+        top: 42%;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        font-size: 86px;
+        font-weight: 800;
+        letter-spacing: 8px;
+        color: rgba(220, 38, 38, 0.16);
+        transform: rotate(-28deg);
+        z-index: 9999;
+        pointer-events: none;
+        white-space: nowrap;
       }
 
       /* ===== HEADER ===== */
@@ -529,6 +556,7 @@ export async function createSbiStatementPdf(accountInfo = {}, transactions = [])
     </style>
   </head>
   <body>
+    ${watermark ? `<div class="watermark">${watermark}</div>` : ""}
     <div class="page">
       <!-- ===== HEADER ===== -->
       <div class="header">

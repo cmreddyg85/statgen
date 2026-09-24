@@ -146,3 +146,33 @@ export const studentRecordSchema = z.object({
       message: 'The generated transactions are out of order, so nothing was saved.',
     }),
 });
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a valid date');
+
+/** Body of the SBI report form: a pasted payload and what it holds. */
+export const sbiReportSchema = z.object({
+  source: z.enum(['extract', 'transactions']),
+  input: z.string().min(2, 'Paste the JSON to build the report from').max(20_000_000),
+});
+
+/** Body of the per-record statement PDF endpoint. */
+export const statementPdfSchema = z
+  .object({
+    fromDate: isoDate,
+    toDate: isoDate,
+    dateOfStatement: isoDate.optional(),
+    /** The watermarked preview anyone with access may download. */
+    dummy: z.boolean().default(false),
+    /** Encrypt this download. */
+    protect: z.boolean().default(false),
+    /**
+     * The password to encrypt it with. Defaults to the one saved on the
+     * record; whatever is passed here applies to this file only and is never
+     * written back.
+     */
+    password: z.string().max(200).optional(),
+  })
+  .refine((value) => value.toDate >= value.fromDate, {
+    path: ['toDate'],
+    message: 'The end date cannot be before the start date',
+  });

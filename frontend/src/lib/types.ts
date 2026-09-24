@@ -62,6 +62,9 @@ export interface StudentRecordSummary {
   finalizedAt: string | null;
   finalizedBy: string | null;
   finalizedByName: string | null;
+  /** Set when an admin released the clean statement to the student's owner. */
+  downloadReleasedAt: string | null;
+  downloadReleasedBy: string | null;
 }
 
 /** What the server resolved about a machine when the session was created. */
@@ -89,6 +92,28 @@ export interface ActiveSession {
 export interface StudentRecordEntry extends StudentRecordSummary {
   input: Record<string, unknown>;
   extract: Record<string, unknown>;
+  statement: SbiStatement;
+}
+
+/** Where a standalone SBI report's payload came from. */
+export type SbiReportSource = 'extract' | 'transactions';
+
+/** A report as listed on the SBI screen. */
+export interface SbiReportSummary {
+  id: string;
+  source: SbiReportSource;
+  customerName: string | null;
+  accountNumber: string | null;
+  transactionCount: number;
+  createdBy: string;
+  createdByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The same report with the pasted payload and what was built from it. */
+export interface SbiReportEntry extends SbiReportSummary {
+  input: unknown;
   statement: SbiStatement;
 }
 

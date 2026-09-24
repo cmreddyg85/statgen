@@ -2,7 +2,8 @@ import { recordAudit } from './audit.service.js';
 import * as studentService from './student.service.js';
 import * as records from '../repositories/student-record.repository.js';
 import type { RequestActor, StudentRecordEntry, StudentRecordSummary } from '../types.js';
-import { conflict, notFound } from '../utils/errors.js';
+import { renderStatement, type StatementPayload } from '../sbi/statement-render.js';
+import { conflict, forbidden, notFound } from '../utils/errors.js';
 
 /**
  * Generated statements hang off a student, so they inherit that student's
@@ -180,4 +181,79 @@ export async function unfinalize(
   });
 
   return updated;
+}
+
+/**
+ * Releasing a finalized record hands its clean statement to the student's
+ * owner. Administrators only — the route enforces the role.
+ */
+export async function setDownloadReleased(
+  studentId: string,
+  id: string,
+  released: boolean,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  await studentService.getById(studentId, actor);
+
+  const existing = await records.findSummary(studentId, id);
+  if (!existing) throw notFound('Generated record not found.');
+  if (released && !existing.finalizedAt) {
+    throw conflict('Finalize the record before releasing its statement.');
+  }
+
+  const updated = await records.setDownloadReleased(
+    studentId,
+    id,
+    released ? actor.user.id : null,
+  );
+  if (!updated) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: released ? 'STUDENT_RECORD_DOWNLOAD_SHOWN' : 'STUDENT_RECORD_DOWNLOAD_HIDDEN',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return updated;
+}
+
+export interface StatementPdfOptions {
+  fromDate: string;
+  toDate: string;
+  dateOfStatement?: string;
+  dummy: boolean;
+  protect: boolean;
+  /** Overrides the record's own password, for this download only. */
+  password?: string;
+}
+
+/**
+ * Renders one record's statement. The clean copy is for administrators and,
+ * once released, the student's owner; everyone else gets it watermarked, and
+ * the server decides — not the caller.
+ */
+export async function statementPdf(
+  studentId: string,
+  id: string,
+  options: StatementPdfOptions,
+  actor: RequestActor,
+): Promise<{ pdf: Buffer; fileName: string }> {
+  await studentService.getById(studentId, actor);
+
+  const record = await records.findById(studentId, id);
+  if (!record) throw notFound('Generated record not found.');
+
+  const mayDownloadClean =
+    actor.user.role === 'ADMIN' || Boolean(record.downloadReleasedAt);
+  if (!options.dummy && !mayDownloadClean) {
+    throw forbidden('This statement has not been released for download yet.');
+  }
+
+  // Whatever password the dialog sent applies to this file only; nothing is
+  // written back to the record.
+  return renderStatement(record.statement as StatementPayload, options);
 }
