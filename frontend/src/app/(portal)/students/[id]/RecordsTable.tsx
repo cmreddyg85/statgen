@@ -7,6 +7,7 @@ import { Badge, StatusDot } from '@/components/Badge';
 import { Button, LinkButton } from '@/components/Button';
 import { StatementDialog } from '@/components/StatementDialog';
 import { DateCell } from '@/components/DateCell';
+import { EyeIcon } from '@/components/Icon';
 import { Modal, ConfirmDialog } from '@/components/Modal';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
@@ -419,18 +420,6 @@ module.exports = {
   );
 }
 
-function EyeIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <circle cx="12" cy="12" r="2.75" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  );
-}
 
 function PencilIcon() {
   return (

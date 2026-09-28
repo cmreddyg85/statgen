@@ -7,6 +7,7 @@ import type { SbiReportEntry, SbiReportSource, SbiReportSummary } from '@/lib/ty
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { DateCell } from '@/components/DateCell';
+import { EyeIcon } from '@/components/Icon';
 import { ConfirmDialog, Modal } from '@/components/Modal';
 import { PageHeader } from '@/components/PageHeader';
 import { StatementDialog } from '@/components/StatementDialog';
@@ -32,7 +33,11 @@ export function SbiReportsClient() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SbiReportEntry | null>(null);
-  const [viewing, setViewing] = useState<SbiReportEntry | null>(null);
+  const [viewing, setViewing] = useState<{
+    title: string;
+    description: string;
+    json: unknown;
+  } | null>(null);
   const [downloading, setDownloading] = useState<SbiReportEntry | null>(null);
   const [deleting, setDeleting] = useState<SbiReportSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -73,10 +78,23 @@ export function SbiReportsClient() {
     }
   };
 
-  const open = async (id: string, target: 'view' | 'edit' | 'download') => {
+  const open = async (id: string, target: 'view' | 'salary' | 'edit' | 'download') => {
     const report = await fullReport(id);
     if (!report) return;
-    if (target === 'view') setViewing(report);
+    if (target === 'view') {
+      setViewing({
+        title: 'Input JSON',
+        description: `Pasted as ${SOURCE_LABEL[report.source].toLowerCase()}.`,
+        json: report.input,
+      });
+    }
+    if (target === 'salary') {
+      setViewing({
+        title: 'Salary transactions',
+        description: 'The salary credits built from the input.',
+        json: report.statement.salaryTrans,
+      });
+    }
     if (target === 'download') setDownloading(report);
     if (target === 'edit') {
       setEditing(report);
@@ -147,6 +165,7 @@ export function SbiReportsClient() {
                   <th scope="col">Account</th>
                   <th scope="col">Built from</th>
                   <th scope="col">Transactions</th>
+                  <th scope="col">Salary transactions</th>
                   <th scope="col">Input</th>
                   <th scope="col" className="col-actions text-right">
                     Actions
@@ -169,6 +188,17 @@ export function SbiReportsClient() {
                       <Badge tone="neutral">{SOURCE_LABEL[report.source]}</Badge>
                     </td>
                     <td className="tabular-nums">{report.transactionCount}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => void open(report.id, 'salary')}
+                        disabled={busyId === report.id}
+                        className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60"
+                      >
+                        Salary transactions
+                        <EyeIcon />
+                      </button>
+                    </td>
                     <td>
                       <button
                         type="button"
@@ -229,8 +259,8 @@ export function SbiReportsClient() {
 
       <Modal
         open={viewing !== null}
-        title="Input JSON"
-        description={viewing ? `Pasted as ${SOURCE_LABEL[viewing.source].toLowerCase()}.` : ''}
+        title={viewing?.title ?? ''}
+        description={viewing?.description ?? ''}
         width="lg"
         onClose={() => setViewing(null)}
         footer={
@@ -240,7 +270,7 @@ export function SbiReportsClient() {
         }
       >
         <pre className="max-h-[60vh] overflow-auto rounded-[8px] bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
-          {JSON.stringify(viewing?.input ?? null, null, 2)}
+          {JSON.stringify(viewing?.json ?? null, null, 2)}
         </pre>
       </Modal>
 
