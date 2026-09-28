@@ -50,3 +50,10 @@ export function humanizeAction(action: string): string {
   const lower = action.toLowerCase().replace(/_/g, ' ');
   return lower.charAt(0).toUpperCase() + lower.slice(1);
 }
+
+/** A copy of a flat object with its keys in alphabetical order, for display. */
+export function sortKeys<T extends Record<string, unknown>>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).sort(([first], [second]) => first.localeCompare(second)),
+  ) as T;
+}

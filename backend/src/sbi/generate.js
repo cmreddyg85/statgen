@@ -4157,7 +4157,8 @@ function generateSbiTransactions(options = {}) {
 
         transactions.push({
           Date: formatTransactionDate(interestBaseDate),
-          Narration: "CREDIT INTEREST--",
+          Narration: "INTEREST CREDIT",
+          hideBranchDetails: true,
           Ref: "",
           Debit: "",
           Credit: interestAmount,

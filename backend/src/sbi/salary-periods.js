@@ -197,15 +197,15 @@ export function buildSalaryPeriods(form, statementEnd = today()) {
     // settlement would have been that month's salary plus the days worked.
     const withheld = isLast && !fullAndFinalCredited;
 
-    // Leaving during the current month: the settlement is still to come, and
-    // the relieving month's credit goes out with it, so the statement stops
-    // at the month before. Neither has happened yet on the day this is run.
+    // Leaving during the current month: the settlement is still to come. The
+    // relieving month's credit (last month's salary) goes out with it only
+    // when the last day worked is the 10th or earlier; leaving later, it was
+    // paid as usual on the salary day.
     const leftThisMonth =
       relieving.getFullYear() === statementEnd.getFullYear() &&
       relieving.getMonth() === statementEnd.getMonth();
 
-    const stopEarly =
-      isLast && (leftThisMonth || (withheld && relieving.getDate() <= 10));
+    const stopEarly = isLast && relieving.getDate() <= 10 && (leftThisMonth || withheld);
     const lastPaidMonth = stopEarly ? addMonths(relieving, -1) : relieving;
 
     push(start, lastDayOfMonth(lastPaidMonth), {

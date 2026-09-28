@@ -17,98 +17,96 @@ export async function createSbiStatementPdf(
   transactions = [],
   { watermark = null } = {},
 ) {
-    // Helper: format number to Indian style with 2 decimals
-    function formatToIndianDenomination(balance) {
-      if (typeof balance !== "string" && typeof balance !== "number")
-        return balance;
-      const num = parseFloat(balance);
-      if (isNaN(num)) return balance;
-      return num.toLocaleString("en-IN", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-    }
+  // Helper: format number to Indian style with 2 decimals
+  function formatToIndianDenomination(balance) {
+    if (typeof balance !== "string" && typeof balance !== "number")
+      return balance;
+    const num = parseFloat(balance);
+    if (isNaN(num)) return balance;
+    return num.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
 
-    // Compute summary from transactions
-    function computeSummary(txs) {
-      if (!txs || txs.length === 0) {
-        return {
-          openingBalance: 0,
-          totalDebits: 0,
-          totalCredits: 0,
-          debitCount: 0,
-          creditCount: 0,
-          closingBalance: 0,
-        };
-      }
-
-      let first = txs[0];
-      let last = txs[txs.length - 1];
-
-      // Parse first transaction's balance and debit/credit
-      let firstBalance = parseFloat(first.Balance?.replace(/,/g, "") || 0);
-      let firstDebit = parseFloat(first.Debit?.replace(/,/g, "") || 0);
-      let firstCredit = parseFloat(first.Credit?.replace(/,/g, "") || 0);
-
-      // Opening balance = balance before first transaction
-      let openingBalance = firstBalance;
-      if (firstDebit > 0) openingBalance += firstDebit;
-      else if (firstCredit > 0) openingBalance -= firstCredit;
-
-      let totalDebits = 0,
-        totalCredits = 0,
-        debitCount = 0,
-        creditCount = 0;
-      txs.forEach((tx) => {
-        let debit = parseFloat(tx.Debit?.replace(/,/g, "") || 0);
-        let credit = parseFloat(tx.Credit?.replace(/,/g, "") || 0);
-        if (debit > 0) {
-          totalDebits += debit;
-          debitCount++;
-        }
-        if (credit > 0) {
-          totalCredits += credit;
-          creditCount++;
-        }
-      });
-
-      let closingBalance = parseFloat(last.Balance?.replace(/,/g, "") || 0);
-
+  // Compute summary from transactions
+  function computeSummary(txs) {
+    if (!txs || txs.length === 0) {
       return {
-        openingBalance,
-        totalDebits,
-        totalCredits,
-        debitCount,
-        creditCount,
-        closingBalance,
+        openingBalance: 0,
+        totalDebits: 0,
+        totalCredits: 0,
+        debitCount: 0,
+        creditCount: 0,
+        closingBalance: 0,
       };
     }
 
-    const summary = computeSummary(transactions);
+    let first = txs[0];
+    let last = txs[txs.length - 1];
 
-    // Format summary numbers
-    const openingBalStr = formatToIndianDenomination(summary.openingBalance);
-    const totalDebitsStr = formatToIndianDenomination(summary.totalDebits);
-    const totalCreditsStr = formatToIndianDenomination(summary.totalCredits);
-    const closingBalStr = formatToIndianDenomination(summary.closingBalance);
+    // Parse first transaction's balance and debit/credit
+    let firstBalance = parseFloat(first.Balance?.replace(/,/g, "") || 0);
+    let firstDebit = parseFloat(first.Debit?.replace(/,/g, "") || 0);
+    let firstCredit = parseFloat(first.Credit?.replace(/,/g, "") || 0);
 
-    // Build transaction rows HTML
-    let transactionRows = "";
-    transactions.forEach((tx) => {
-      const debit = tx.Debit ? formatToIndianDenomination(tx.Debit) : "";
-      const credit = tx.Credit ? formatToIndianDenomination(tx.Credit) : "";
-      const balance = tx.Balance ? formatToIndianDenomination(tx.Balance) : "";
-      transactionRows += `
+    // Opening balance = balance before first transaction
+    let openingBalance = firstBalance;
+    if (firstDebit > 0) openingBalance += firstDebit;
+    else if (firstCredit > 0) openingBalance -= firstCredit;
+
+    let totalDebits = 0,
+      totalCredits = 0,
+      debitCount = 0,
+      creditCount = 0;
+    txs.forEach((tx) => {
+      let debit = parseFloat(tx.Debit?.replace(/,/g, "") || 0);
+      let credit = parseFloat(tx.Credit?.replace(/,/g, "") || 0);
+      if (debit > 0) {
+        totalDebits += debit;
+        debitCount++;
+      }
+      if (credit > 0) {
+        totalCredits += credit;
+        creditCount++;
+      }
+    });
+
+    let closingBalance = parseFloat(last.Balance?.replace(/,/g, "") || 0);
+
+    return {
+      openingBalance,
+      totalDebits,
+      totalCredits,
+      debitCount,
+      creditCount,
+      closingBalance,
+    };
+  }
+
+  const summary = computeSummary(transactions);
+
+  // Format summary numbers
+  const openingBalStr = formatToIndianDenomination(summary.openingBalance);
+  const totalDebitsStr = formatToIndianDenomination(summary.totalDebits);
+  const totalCreditsStr = formatToIndianDenomination(summary.totalCredits);
+  const closingBalStr = formatToIndianDenomination(summary.closingBalance);
+
+  // Build transaction rows HTML
+  let transactionRows = "";
+  transactions.forEach((tx) => {
+    const debit = tx.Debit ? formatToIndianDenomination(tx.Debit) : "";
+    const credit = tx.Credit ? formatToIndianDenomination(tx.Credit) : "";
+    const balance = tx.Balance ? formatToIndianDenomination(tx.Balance) : "";
+    transactionRows += `
         <tr>
           <td class="center">${tx.Date || ""}</td>
           <td class="center">${tx.Date || ""}</td>
           <td class="details-cell">
             ${tx.Narration || ""}
   ${
-    tx.isSalary
-      ? ` 009${Math.floor(
-          100000000 + Math.random() * 900000000,
-        )} AT ${accountInfo.branchCode} ${accountInfo.branchName}`
+    tx.hideBranchDetails
+      ? ` `
       : ` 009${Math.floor(
           100000000 + Math.random() * 900000000,
         )} AT ${accountInfo.branchCode} ${accountInfo.branchName}`
@@ -120,50 +118,50 @@ export async function createSbiStatementPdf(
           <td class="center">${balance}</td>
         </tr>
       `;
-    });
+  });
 
-    const lastBalance =
-      formatToIndianDenomination(
-        transactions?.[transactions.length - 1]?.Balance,
-      ) || "0.00";
+  const lastBalance =
+    formatToIndianDenomination(
+      transactions?.[transactions.length - 1]?.Balance,
+    ) || "0.00";
 
-    // Prepare dynamic values
-    const customerName = accountInfo.customerName || "";
-    const email = accountInfo.email || "";
-    const address = accountInfo.address || "";
-    const dateOfStatement =
-      accountInfo.dateOfStatement?.trim() ||
-      new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
-    const clearBalance = `${lastBalance}CR`;
-    const unclearedAmount = accountInfo.unclearedAmount || "0.00";
-    const modBalance = accountInfo.modBalance || "0.00";
-    const lien = accountInfo.lien || "0.00";
-    const limit = accountInfo.limit || "0.00";
-    const monthlyAvgBalance = accountInfo.monthlyAvgBalance || "0.00";
-    const interestRate = accountInfo.interestRate || "0.00 % p.a.";
-    const drawingPower = accountInfo.drawingPower || "0.00";
-    const accountOpenDate = accountInfo.accountOpenDate || "";
-    const district = accountInfo.district || "";
-    const bankAddress = accountInfo.bankAddress || "";
-    const branchCode = accountInfo.branchCode || "";
-    const branchName = accountInfo.branchName || "";
-    const branchEmail = accountInfo.branchEmail || "";
-    const branchPhone = accountInfo.branchPhone || "";
-    const cifNumber = accountInfo.cifNumber || "";
-    const accountNumber = accountInfo.accountNumber || "";
-    const accountTypeSuffix = accountInfo.accountTypeSuffix || "";
-    const product = accountInfo.product || "";
-    const ifscCode = accountInfo.ifscCode || "";
-    const currency = accountInfo.currency || "INR";
-    const accountStatus = accountInfo.accountStatus || "";
-    const ckycrNumber = accountInfo.ckycrNumber || "Not Available";
-    const micrCode = accountInfo.micrCode || "";
-    const nomineeName = accountInfo.nomineeName || "XXXXX";
-    const fromDate = accountInfo.fromDate || "";
-    const toDate = accountInfo.toDate || "";
+  // Prepare dynamic values
+  const customerName = accountInfo.customerName || "";
+  const email = accountInfo.email || "";
+  const address = accountInfo.address || "";
+  const dateOfStatement =
+    accountInfo.dateOfStatement?.trim() ||
+    new Date().toLocaleDateString("en-GB").replace(/\//g, "-");
+  const clearBalance = `${lastBalance}CR`;
+  const unclearedAmount = accountInfo.unclearedAmount || "0.00";
+  const modBalance = accountInfo.modBalance || "0.00";
+  const lien = accountInfo.lien || "0.00";
+  const limit = accountInfo.limit || "0.00";
+  const monthlyAvgBalance = accountInfo.monthlyAvgBalance || "0.00";
+  const interestRate = accountInfo.interestRate || "0.00 % p.a.";
+  const drawingPower = accountInfo.drawingPower || "0.00";
+  const accountOpenDate = accountInfo.accountOpenDate || "";
+  const district = accountInfo.district || "";
+  const bankAddress = accountInfo.bankAddress || "";
+  const branchCode = accountInfo.branchCode || "";
+  const branchName = accountInfo.branchName || "";
+  const branchEmail = accountInfo.branchEmail || "";
+  const branchPhone = accountInfo.branchPhone || "";
+  const cifNumber = accountInfo.cifNumber || "";
+  const accountNumber = accountInfo.accountNumber || "";
+  const accountTypeSuffix = accountInfo.accountTypeSuffix || "";
+  const product = accountInfo.product || "";
+  const ifscCode = accountInfo.ifscCode || "";
+  const currency = accountInfo.currency || "INR";
+  const accountStatus = accountInfo.accountStatus || "";
+  const ckycrNumber = accountInfo.ckycrNumber || "Not Available";
+  const micrCode = accountInfo.micrCode || "";
+  const nomineeName = accountInfo.nomineeName || "XXXXX";
+  const fromDate = accountInfo.fromDate || "";
+  const toDate = accountInfo.toDate || "";
 
-    // Direct HTML with embedded CSS
-    const htmlContent = `<!doctype html>
+  // Direct HTML with embedded CSS
+  const htmlContent = `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -873,49 +871,49 @@ export async function createSbiStatementPdf(
 </html>
 `;
 
-    const browser = await chromium.launch({
-      headless: true,
-    });
-    const page = await browser.newPage();
+  const browser = await chromium.launch({
+    headless: true,
+  });
+  const page = await browser.newPage();
 
-    // Load the HTML directly in the page
-    await page.setContent(htmlContent, {
-      waitUntil: "networkidle",
-    });
+  // Load the HTML directly in the page
+  await page.setContent(htmlContent, {
+    waitUntil: "networkidle",
+  });
 
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      // preferCSSPageSize: true,
-      margin: {
-        top: "15mm",
-        right: "13mm",
-        bottom: "30mm",
-        left: "13mm",
-      },
-      displayHeaderFooter: true,
-      headerTemplate: `<div></div>`,
-      footerTemplate: `
+  const pdfBuffer = await page.pdf({
+    format: "A4",
+    printBackground: true,
+    // preferCSSPageSize: true,
+    margin: {
+      top: "15mm",
+      right: "13mm",
+      bottom: "30mm",
+      left: "13mm",
+    },
+    displayHeaderFooter: true,
+    headerTemplate: `<div></div>`,
+    footerTemplate: `
         <div style="width:100%; text-align:center; font-size:14px; color:#444;">
           Page no. <span class="pageNumber"></span>
         </div>
       `,
+  });
+
+  await browser.close();
+
+  let outputPdfBuffer = pdfBuffer;
+
+  if (accountInfo.password?.trim()) {
+    const pdfDoc = await PDFDocument.load(pdfBuffer);
+
+    pdfDoc.encrypt({
+      userPassword: accountInfo.password,
+      ownerPassword: accountInfo.password,
     });
 
-    await browser.close();
+    outputPdfBuffer = Buffer.from(await pdfDoc.save());
+  }
 
-    let outputPdfBuffer = pdfBuffer;
-
-    if (accountInfo.password?.trim()) {
-      const pdfDoc = await PDFDocument.load(pdfBuffer);
-
-      pdfDoc.encrypt({
-        userPassword: accountInfo.password,
-        ownerPassword: accountInfo.password,
-      });
-
-      outputPdfBuffer = Buffer.from(await pdfDoc.save());
-    }
-
-    return outputPdfBuffer;
+  return outputPdfBuffer;
 }

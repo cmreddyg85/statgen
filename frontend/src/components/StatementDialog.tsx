@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ApiError, apiBlob, downloadBlob } from '@/lib/api';
-import type { SbiTransaction } from '@/lib/types';
+import type { SbiStatement, SbiTransaction } from '@/lib/types';
 import { Button } from './Button';
 import { CheckboxField, TextField } from './Field';
 import { Modal } from './Modal';
@@ -29,6 +29,30 @@ const statementFileName = () => {
   const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   return `AccountStatement_${date}_${time}.pdf`;
 };
+
+const slug = (value: string) =>
+  value.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'statement';
+
+/** The data file the generator reads back: three consts, nothing else. */
+export function downloadStatementJson(statement: SbiStatement): void {
+  const { accountInfo, transactions, salaryTrans } = statement;
+  const file = `const accountInfo = ${JSON.stringify(accountInfo, null, 2)};
+
+const transactions = ${JSON.stringify(transactions, null, 2)};
+
+const salaryTrans = ${JSON.stringify(salaryTrans, null, 2)};
+
+module.exports = {
+  accountInfo,
+  transactions,
+  salaryTrans,
+};
+`;
+  downloadBlob(
+    new Blob([file], { type: 'text/javascript' }),
+    `final-${slug(accountInfo.customerName ?? 'statement')}.js`,
+  );
+}
 
 /**
  * Date range for one statement PDF: the dates go into the account block and

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api, applyApiError } from '@/lib/api';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, sortKeys } from '@/lib/format';
 import type { SbiReportEntry, SbiReportSource, SbiReportSummary } from '@/lib/types';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
@@ -10,7 +10,7 @@ import { DateCell } from '@/components/DateCell';
 import { EyeIcon } from '@/components/Icon';
 import { ConfirmDialog, Modal } from '@/components/Modal';
 import { PageHeader } from '@/components/PageHeader';
-import { StatementDialog } from '@/components/StatementDialog';
+import { StatementDialog, downloadStatementJson } from '@/components/StatementDialog';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
 
@@ -18,6 +18,26 @@ const SOURCE_LABEL: Record<SbiReportSource, string> = {
   extract: 'Extract details',
   transactions: 'Transactions',
 };
+
+/** The JSON panels, in the order they appear as columns. */
+const PANELS = [
+  { key: 'input', label: 'Input details', pick: (r: SbiReportEntry) => r.input },
+  {
+    key: 'account',
+    label: 'Account details',
+    pick: (r: SbiReportEntry) => sortKeys(r.statement.accountInfo),
+  },
+  {
+    key: 'salary',
+    label: 'Salary transactions',
+    pick: (r: SbiReportEntry) => r.statement.salaryTrans,
+  },
+  {
+    key: 'transactions',
+    label: 'Transactions',
+    pick: (r: SbiReportEntry) => r.statement.transactions,
+  },
+] as const;
 
 /**
  * Statements built straight from a pasted payload, with no student attached
@@ -33,12 +53,11 @@ export function SbiReportsClient() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SbiReportEntry | null>(null);
-  const [viewing, setViewing] = useState<{
-    title: string;
-    description: string;
-    json: unknown;
+  const [viewing, setViewing] = useState<{ title: string; json: unknown } | null>(null);
+  const [downloading, setDownloading] = useState<{
+    report: SbiReportEntry;
+    dummy: boolean;
   } | null>(null);
-  const [downloading, setDownloading] = useState<SbiReportEntry | null>(null);
   const [deleting, setDeleting] = useState<SbiReportSummary | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const cache = useRef(new Map<string, SbiReportEntry>());
@@ -78,24 +97,17 @@ export function SbiReportsClient() {
     }
   };
 
-  const open = async (id: string, target: 'view' | 'salary' | 'edit' | 'download') => {
+  const openPanel = async (id: string, title: string, pick: (r: SbiReportEntry) => unknown) => {
+    const report = await fullReport(id);
+    if (report) setViewing({ title, json: pick(report) });
+  };
+
+  const open = async (id: string, target: 'json' | 'dummy' | 'download' | 'edit') => {
     const report = await fullReport(id);
     if (!report) return;
-    if (target === 'view') {
-      setViewing({
-        title: 'Input JSON',
-        description: `Pasted as ${SOURCE_LABEL[report.source].toLowerCase()}.`,
-        json: report.input,
-      });
-    }
-    if (target === 'salary') {
-      setViewing({
-        title: 'Salary transactions',
-        description: 'The salary credits built from the input.',
-        json: report.statement.salaryTrans,
-      });
-    }
-    if (target === 'download') setDownloading(report);
+    if (target === 'json') downloadStatementJson(report.statement);
+    if (target === 'dummy') setDownloading({ report, dummy: true });
+    if (target === 'download') setDownloading({ report, dummy: false });
     if (target === 'edit') {
       setEditing(report);
       setFormOpen(true);
@@ -165,8 +177,11 @@ export function SbiReportsClient() {
                   <th scope="col">Account</th>
                   <th scope="col">Built from</th>
                   <th scope="col">Transactions</th>
-                  <th scope="col">Salary transactions</th>
-                  <th scope="col">Input</th>
+                  {PANELS.map((item) => (
+                    <th key={item.key} scope="col">
+                      {item.label}
+                    </th>
+                  ))}
                   <th scope="col" className="col-actions text-right">
                     Actions
                   </th>
@@ -188,33 +203,39 @@ export function SbiReportsClient() {
                       <Badge tone="neutral">{SOURCE_LABEL[report.source]}</Badge>
                     </td>
                     <td className="tabular-nums">{report.transactionCount}</td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => void open(report.id, 'salary')}
-                        disabled={busyId === report.id}
-                        className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60"
-                      >
-                        Salary transactions
-                        <EyeIcon />
-                      </button>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        onClick={() => void open(report.id, 'view')}
-                        disabled={busyId === report.id}
-                        className="whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60"
-                      >
-                        Input Json
-                      </button>
-                    </td>
+                    {PANELS.map((item) => (
+                      <td key={item.key}>
+                        <button
+                          type="button"
+                          onClick={() => void openPanel(report.id, item.label, item.pick)}
+                          disabled={busyId === report.id}
+                          className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60"
+                        >
+                          {item.label}
+                          <EyeIcon />
+                        </button>
+                      </td>
+                    ))}
                     <td className="col-actions">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
                           loading={busyId === report.id}
+                          onClick={() => void open(report.id, 'json')}
+                        >
+                          Download JSON
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void open(report.id, 'dummy')}
+                        >
+                          Download Dummy PDF
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => void open(report.id, 'download')}
                         >
                           Download statement
@@ -260,7 +281,6 @@ export function SbiReportsClient() {
       <Modal
         open={viewing !== null}
         title={viewing?.title ?? ''}
-        description={viewing?.description ?? ''}
         width="lg"
         onClose={() => setViewing(null)}
         footer={
@@ -276,9 +296,10 @@ export function SbiReportsClient() {
 
       {downloading && (
         <StatementDialog
-          endpoint={`/sbi/reports/${downloading.id}/statement-pdf`}
-          transactions={downloading.statement.transactions}
-          defaultPassword={downloading.statement.accountInfo.password}
+          endpoint={`/sbi/reports/${downloading.report.id}/statement-pdf`}
+          transactions={downloading.report.statement.transactions}
+          defaultPassword={downloading.report.statement.accountInfo.password}
+          dummy={downloading.dummy}
           onClose={() => setDownloading(null)}
         />
       )}

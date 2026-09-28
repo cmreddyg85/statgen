@@ -175,6 +175,31 @@ describe('buildSalaryPeriods', () => {
     expect(periods.filter((period) => period.from > todayIso)).toHaveLength(0);
   });
 
+  it("still pays last month's salary when relieved this month after the 10th", () => {
+    // Relieved 15 Sep, run on 25 Sep: August's salary landed on 5 Sep; only
+    // the settlement (October) is still to come.
+    const periods = buildSalaryPeriods(
+      form({
+        companies: [
+          company({
+            joiningDate: '2022-12-08',
+            relievingDate: '2026-09-15',
+            salary: 63467,
+            hikes: [{ date: '2026-05-01', salary: 75967 }],
+          }),
+        ],
+      }),
+      new Date(2026, 8, 25),
+    );
+
+    expect(lastPaid(periods)).toMatchObject({
+      from: '2026-06-01',
+      to: '2026-09-25',
+      amount: '75967.00',
+    });
+    expect(isOrdered(periods)).toBe(true);
+  });
+
   it('leaves out this month when the current job ended this month', () => {
     // Relieved earlier this month: the settlement lands next month, and the
     // relieving month's own credit goes with it.

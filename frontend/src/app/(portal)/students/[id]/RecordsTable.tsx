@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiError, api, downloadBlob } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
+import { sortKeys } from '@/lib/format';
 import type { StudentRecordEntry, StudentRecordSummary } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
 import { Button, LinkButton } from '@/components/Button';
-import { StatementDialog } from '@/components/StatementDialog';
+import { StatementDialog, downloadStatementJson } from '@/components/StatementDialog';
 import { DateCell } from '@/components/DateCell';
 import { EyeIcon } from '@/components/Icon';
 import { Modal, ConfirmDialog } from '@/components/Modal';
@@ -20,7 +21,7 @@ const PANELS = [
   {
     key: 'account',
     label: 'Account details',
-    pick: (r: StudentRecordEntry) => r.statement.accountInfo,
+    pick: (r: StudentRecordEntry) => sortKeys(r.statement.accountInfo),
   },
   {
     key: 'salary',
@@ -33,9 +34,6 @@ const PANELS = [
     pick: (r: StudentRecordEntry) => r.statement.transactions,
   },
 ] as const;
-
-const slug = (value: string) =>
-  value.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'statement';
 
 /**
  * The statements generated for one student. The list carries summaries only —
@@ -105,28 +103,9 @@ export function RecordsTable({ studentId }: { studentId: string }) {
     if (record) setPanel({ title: label, json: pick(record) });
   };
 
-  /** The data file the generator reads back: three consts, nothing else. */
   const downloadJson = async (id: string) => {
     const record = await fullRecord(id);
-    if (!record) return;
-
-    const { accountInfo, transactions, salaryTrans } = record.statement;
-    const file = `const accountInfo = ${JSON.stringify(accountInfo, null, 2)};
-
-const transactions = ${JSON.stringify(transactions, null, 2)};
-
-const salaryTrans = ${JSON.stringify(salaryTrans, null, 2)};
-
-module.exports = {
-  accountInfo,
-  transactions,
-  salaryTrans,
-};
-`;
-    downloadBlob(
-      new Blob([file], { type: 'text/javascript' }),
-      `final-${slug(accountInfo.customerName ?? 'statement')}.js`,
-    );
+    if (record) downloadStatementJson(record.statement);
   };
 
   const openPdfDialog = async (id: string, dummy: boolean) => {
