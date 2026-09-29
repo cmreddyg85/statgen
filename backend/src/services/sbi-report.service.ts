@@ -8,7 +8,7 @@ import type {
   SbiReportSource,
   SbiReportSummary,
 } from '../types.js';
-import { badRequest, notFound } from '../utils/errors.js';
+import { badRequest, conflict, notFound } from '../utils/errors.js';
 import type { RenderOptions } from '../sbi/statement-render.js';
 
 /**
@@ -88,6 +88,15 @@ export async function getById(id: string): Promise<SbiReportEntry> {
   return report;
 }
 
+/** A finalized report is locked for everyone until it is unfinalized. */
+async function assertEditable(id: string): Promise<SbiReportEntry> {
+  const existing = await getById(id);
+  if (existing.finalizedAt) {
+    throw conflict('This report is finalized. Unfinalize it before changing or deleting it.');
+  }
+  return existing;
+}
+
 export async function create(
   source: SbiReportSource,
   rawInput: unknown,
@@ -116,7 +125,7 @@ export async function update(
   rawInput: unknown,
   actor: RequestActor,
 ): Promise<SbiReportSummary> {
-  await getById(id);
+  await assertEditable(id);
   const input = parseInput(rawInput);
   const statement = buildStatement(source, input);
 
@@ -137,7 +146,7 @@ export async function update(
 }
 
 export async function remove(id: string, actor: RequestActor): Promise<void> {
-  await getById(id);
+  await assertEditable(id);
   const deleted = await reports.deleteReport(id);
   if (!deleted) throw notFound('Report not found.');
 
@@ -149,6 +158,26 @@ export async function remove(id: string, actor: RequestActor): Promise<void> {
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
+}
+
+export async function setFinalized(
+  id: string,
+  finalized: boolean,
+  actor: RequestActor,
+): Promise<SbiReportSummary> {
+  const updated = await reports.setFinalized(id, finalized ? actor.user.id : null);
+  if (!updated) throw notFound('Report not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: finalized ? 'SBI_REPORT_FINALIZED' : 'SBI_REPORT_UNFINALIZED',
+    entityType: 'sbi_report',
+    entityId: id,
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return updated;
 }
 
 export async function statementPdf(

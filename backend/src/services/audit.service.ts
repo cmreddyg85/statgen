@@ -30,6 +30,8 @@ export type AuditAction =
   | 'SBI_REPORT_CREATED'
   | 'SBI_REPORT_UPDATED'
   | 'SBI_REPORT_DELETED'
+  | 'SBI_REPORT_FINALIZED'
+  | 'SBI_REPORT_UNFINALIZED'
   | 'AUTHORIZATION_FAILURE';
 
 export interface AuditEntry {

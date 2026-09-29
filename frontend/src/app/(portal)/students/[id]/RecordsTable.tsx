@@ -27,6 +27,8 @@ const PANELS = [
     key: 'salary',
     label: 'Salary transactions',
     pick: (r: StudentRecordEntry) => r.statement.salaryTrans,
+    // The one panel a user sees too.
+    forUsers: true,
   },
   {
     key: 'transactions',
@@ -42,9 +44,10 @@ const PANELS = [
  */
 export function RecordsTable({ studentId }: { studentId: string }) {
   const toast = useToast();
-  // The raw payloads are an administrator's view; a user works with the
-  // downloads instead.
+  // The raw payloads are an administrator's view; a user sees only the
+  // salary transactions and otherwise works with the downloads.
   const { isAdmin } = useSession();
+  const panels = PANELS.filter((item) => isAdmin || ('forUsers' in item && item.forUsers));
   const [records, setRecords] = useState<StudentRecordSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -186,12 +189,11 @@ export function RecordsTable({ studentId }: { studentId: string }) {
             <thead>
               <tr>
                 <th scope="col">Generated</th>
-                {isAdmin &&
-                  PANELS.map((item) => (
-                    <th key={item.key} scope="col">
-                      {item.label}
-                    </th>
-                  ))}
+                {panels.map((item) => (
+                  <th key={item.key} scope="col">
+                    {item.label}
+                  </th>
+                ))}
                 <th scope="col">Attachment</th>
                 <th scope="col" className="col-actions text-right">
                   Actions
@@ -212,8 +214,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
                       </span>
                     )}
                   </td>
-                  {isAdmin &&
-                    PANELS.map((item) => (
+                  {panels.map((item) => (
                       <td key={item.key}>
                         <button
                           type="button"

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api, applyApiError } from '@/lib/api';
 import { formatDateTime, sortKeys } from '@/lib/format';
 import type { SbiReportEntry, SbiReportSource, SbiReportSummary } from '@/lib/types';
-import { Badge } from '@/components/Badge';
+import { Badge, StatusDot } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { DateCell } from '@/components/DateCell';
 import { EyeIcon } from '@/components/Icon';
@@ -114,6 +114,20 @@ export function SbiReportsClient() {
     }
   };
 
+  /** A finalized report is locked: no edit, no delete, until unfinalized. */
+  const setFinalized = async (report: SbiReportSummary, finalized: boolean) => {
+    setBusyId(report.id);
+    try {
+      await api.post(`/sbi/reports/${report.id}/${finalized ? 'finalize' : 'unfinalize'}`);
+      toast.success(finalized ? 'Report finalized.' : 'Report unfinalized.');
+      await load();
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not update the report.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleting) return;
     setDeleteBusy(true);
@@ -192,6 +206,14 @@ export function SbiReportsClient() {
                   <tr key={report.id}>
                     <td>
                       <DateCell value={report.createdAt} />
+                      {report.finalizedAt && (
+                        <span className="mt-1 inline-block">
+                          <Badge tone="success">
+                            <StatusDot tone="success" />
+                            Finalized
+                          </Badge>
+                        </span>
+                      )}
                     </td>
                     <td className="font-medium">
                       {report.customerName ?? <span className="text-[var(--color-muted)]">—</span>}
@@ -243,6 +265,19 @@ export function SbiReportsClient() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="w-[104px]"
+                          loading={busyId === report.id}
+                          onClick={() => void setFinalized(report, !report.finalizedAt)}
+                        >
+                          {report.finalizedAt ? 'Unfinalize' : 'Finalize'}
+                        </Button>
+                        {/* A finalized report is frozen: both stay in place,
+                            disabled, so the reason is one hover away. */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={Boolean(report.finalizedAt)}
+                          title={report.finalizedAt ? 'Unfinalize this report to edit it' : undefined}
                           onClick={() => void open(report.id, 'edit')}
                         >
                           Edit
@@ -251,6 +286,10 @@ export function SbiReportsClient() {
                           variant="ghost"
                           size="sm"
                           className="text-[var(--color-danger)] hover:bg-red-50"
+                          disabled={Boolean(report.finalizedAt)}
+                          title={
+                            report.finalizedAt ? 'Unfinalize this report to delete it' : undefined
+                          }
                           onClick={() => setDeleting(report)}
                         >
                           Delete

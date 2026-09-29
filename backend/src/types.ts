@@ -63,6 +63,7 @@ export interface SbiReportSummary {
   createdByName: string | null;
   createdAt: string;
   updatedAt: string;
+  finalizedAt: string | null;
 }
 
 /** The same report with the pasted payload and what was built from it. */

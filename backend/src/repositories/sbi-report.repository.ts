@@ -11,6 +11,7 @@ interface SummaryRow {
   created_by_name: string | null;
   created_at: string;
   updated_at: string;
+  finalized_at: string | null;
 }
 
 interface ReportRow extends SummaryRow {
@@ -26,7 +27,8 @@ const COLUMNS = `r.id, r.source,
                  r.statement_json->'accountInfo'->>'customerName' AS customer_name,
                  r.statement_json->'accountInfo'->>'accountNumber' AS account_number,
                  jsonb_array_length(r.statement_json->'transactions') AS transaction_count,
-                 r.created_by, u.name AS created_by_name, r.created_at, r.updated_at`;
+                 r.created_by, u.name AS created_by_name, r.created_at, r.updated_at,
+                 r.finalized_at`;
 
 const JOIN = 'LEFT JOIN users u ON u.id = r.created_by';
 
@@ -41,6 +43,7 @@ function mapSummary(row: SummaryRow): SbiReportSummary {
     createdByName: row.created_by_name,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    finalizedAt: row.finalized_at,
   };
 }
 
@@ -97,6 +100,25 @@ export async function updateReport(
      )
      SELECT ${COLUMNS} FROM updated r ${JOIN}`,
     [id, payload.source, JSON.stringify(payload.input), JSON.stringify(payload.statement)],
+  );
+  return rows[0] ? mapSummary(rows[0]) : null;
+}
+
+/** Marks the report finalized by `userId`, or clears it when null. */
+export async function setFinalized(
+  id: string,
+  userId: string | null,
+): Promise<SbiReportSummary | null> {
+  const { rows } = await query<SummaryRow>(
+    `WITH changed AS (
+       UPDATE sbi_reports
+          SET finalized_at = CASE WHEN $2::uuid IS NULL THEN NULL ELSE now() END,
+              finalized_by = $2::uuid
+        WHERE id = $1
+        RETURNING *
+     )
+     SELECT ${COLUMNS} FROM changed r ${JOIN}`,
+    [id, userId],
   );
   return rows[0] ? mapSummary(rows[0]) : null;
 }

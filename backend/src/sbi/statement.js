@@ -104,13 +104,15 @@ export async function createSbiStatementPdf(
           <td class="center">${tx.Date || ""}</td>
           <td class="details-cell">
             ${tx.Narration || ""}
-  ${
-    tx.hideBranchDetails
-      ? ` `
-      : ` 009${Math.floor(
-          100000000 + Math.random() * 900000000,
-        )} AT ${accountInfo.branchCode} ${accountInfo.branchName}`
-  }
+            ${
+              tx.hideBranchDetails
+                ? ` `
+                : ` 009${Math.floor(
+                    100000000 + Math.random() * 900000000,
+                  )} AT ${accountInfo.branchCode} ${
+                    accountInfo.branchTransactions || accountInfo.branchName
+                  }`
+            }
           </td>
           <td class="center">${"-"}</td>
           <td class="center">${debit || "-"}</td>

@@ -81,33 +81,41 @@ function clusterLines(items) {
     }
   }
 
-  return lines.map((line) =>
-    line.items
+  return lines.map((line) => ({
+    y: line.y,
+    text: line.items
       .sort((a, b) => a.x - b.x)
       .map((item) => item.str)
       .join(" ")
       .trim(),
-  );
+  }));
 }
 
 function processLabeledColumn(lines, labelList) {
   const fields = {};
   const prefixLines = [];
   const lastLabelKey = labelList[labelList.length - 1][1];
+  const matches = lines.map((line) => matchLabel(line.text, labelList));
   let started = false;
   let lastKey = null;
+  let lastY = 0;
+  // Wrapped value lines printed above their own label (a long Nominee Name
+  // starts a few points higher), held until that label is reached.
+  let pending = [];
 
-  for (const line of lines) {
+  for (const [index, { y, text: line }] of lines.entries()) {
     if (!line) {
       continue;
     }
 
-    const match = matchLabel(line, labelList);
+    const match = matches[index];
 
     if (match) {
       started = true;
-      fields[match.key] = match.value;
+      fields[match.key] = `${pending.join("")}${match.value}`;
+      pending = [];
       lastKey = match.key;
+      lastY = y;
 
       if (match.key === lastLabelKey) {
         break;
@@ -118,6 +126,14 @@ function processLabeledColumn(lines, labelList) {
 
     if (!started) {
       prefixLines.push(line);
+      continue;
+    }
+
+    // An unlabeled line is a wrapped value: it belongs to whichever label it
+    // sits closer to, the one above or the next one down.
+    const next = matches.findIndex((other, at) => at > index && other);
+    if (next >= 0 && Math.abs(lines[next].y - y) < Math.abs(lastY - y)) {
+      pending.push(line);
     } else if (lastKey) {
       fields[lastKey] = `${fields[lastKey]}${line}`;
     }
@@ -241,6 +257,38 @@ function splitAccountNumber(rawValue) {
   return { accountNumber: match[1], accountTypeSuffix: match[2] || "" };
 }
 
+/**
+ * The branch as the transactions print it, after `AT <branch code>` in the
+ * details column — the header's Branch Name is often cut short. The name can
+ * wrap onto the next lines of the same column, so those are followed while
+ * they sit at line spacing.
+ *
+ * ponytail: page 1 only, and an 11pt gap ends the name (lines sit ~9-10pt
+ * apart, the next transaction starts ~13pt down); read further pages or match
+ * on the date column if a statement lays out differently.
+ */
+function extractBranchTransactions(items, branchCode) {
+  if (!branchCode) return "";
+
+  const marker = new RegExp(`\\bAT\\s+${escapeRegExp(branchCode)}\\b\\s*(.*)$`);
+  const hit = items.find((item) => marker.test(item.str));
+  if (!hit) return "";
+
+  const below = items
+    .filter((item) => Math.abs(item.x - hit.x) < 2 && item.y < hit.y)
+    .sort((a, b) => b.y - a.y);
+
+  const parts = [hit.str.match(marker)[1]];
+  let lastY = hit.y;
+  for (const line of below) {
+    if (lastY - line.y > 11) break;
+    parts.push(line.str);
+    lastY = line.y;
+  }
+
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
 async function getPageTextItems(pdfDoc, pageNumber) {
   const page = await pdfDoc.getPage(pageNumber);
   const [x0, , x1] = page.view;
@@ -362,6 +410,10 @@ async function extractSbiAccountInfo(pdfBuffer, password, details = {}) {
       bankAddress,
       branchCode: right.fields.branchCode || "",
       branchName: right.fields.branchName || "",
+      branchTransactions: extractBranchTransactions(
+        items,
+        right.fields.branchCode || "",
+      ),
       branchEmail: right.fields.branchEmail || "",
       branchPhone: right.fields.branchPhone || "",
       cifNumber: right.fields.cifNumber || "",
@@ -394,4 +446,4 @@ async function extractSbiAccountInfo(pdfBuffer, password, details = {}) {
   };
 }
 
-export { extractSbiAccountInfo };
+export { clusterLines, extractBranchTransactions, extractSbiAccountInfo, processLabeledColumn };

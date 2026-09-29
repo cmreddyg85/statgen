@@ -212,6 +212,21 @@ reportsRouter.delete(
   }),
 );
 
+/** POST /api/v1/sbi/reports/:id/finalize and /unfinalize — locks or unlocks the report. */
+for (const [path, finalized] of [
+  ['finalize', true],
+  ['unfinalize', false],
+] as const) {
+  reportsRouter.post(
+    `/:id/${path}`,
+    validate(uuidParamSchema, 'params'),
+    asyncHandler(async (req, res) => {
+      const { id } = routeParams<{ id: string }>(req);
+      res.json({ report: await reportService.setFinalized(id, finalized, getActor(req)) });
+    }),
+  );
+}
+
 /** POST /api/v1/sbi/reports/:id/statement-pdf */
 reportsRouter.post(
   '/:id/statement-pdf',
