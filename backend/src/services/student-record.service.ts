@@ -2,8 +2,9 @@ import { recordAudit } from './audit.service.js';
 import * as studentService from './student.service.js';
 import * as records from '../repositories/student-record.repository.js';
 import type { RequestActor, StudentRecordEntry, StudentRecordSummary } from '../types.js';
+import { generateSbiTransactions } from '../sbi/generate.js';
 import { renderStatement, type StatementPayload } from '../sbi/statement-render.js';
-import { conflict, forbidden, notFound } from '../utils/errors.js';
+import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 
 /**
  * Generated statements hang off a student, so they inherit that student's
@@ -81,6 +82,63 @@ export async function update(
     entityType: 'student_record',
     entityId: id,
     metadata: { studentId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return updated;
+}
+
+/**
+ * Admin correction of the extract (account block, salary periods, balances):
+ * the statement is generated again from it, so the PDFs follow the edit. The
+ * form input is kept — a later record edit rebuilds the salary periods from
+ * it but carries the edited account block forward.
+ */
+export async function updateExtract(
+  studentId: string,
+  id: string,
+  extract: Record<string, unknown>,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  const existing = await getById(studentId, id, actor);
+  await assertEditable(studentId, id);
+
+  if (!extract.accountInfo || typeof extract.accountInfo !== 'object') {
+    throw badRequest('The extract needs an "accountInfo" object.');
+  }
+  if (!Array.isArray(extract.salaries) || extract.salaries.length === 0) {
+    throw badRequest('The extract needs a non-empty "salaries" array.');
+  }
+
+  let statement;
+  try {
+    statement = generateSbiTransactions(extract);
+  } catch (error) {
+    throw badRequest(`Could not generate from that extract: ${(error as Error).message}`);
+  }
+  if (statement.invalidDates.length > 0) {
+    throw badRequest(
+      `The generated transactions came out in the wrong order (${statement.invalidDates.length} date(s)). Check the salary period dates.`,
+    );
+  }
+  if (statement.transactions.length === 0) {
+    throw badRequest('That extract produced no transactions.');
+  }
+
+  const updated = await records.updateRecord(studentId, id, {
+    input: existing.input,
+    extract,
+    statement,
+  });
+  if (!updated) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_UPDATED',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId, extractEdited: true },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });

@@ -52,7 +52,16 @@ export function RecordsTable({ studentId }: { studentId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [panel, setPanel] = useState<{ title: string; json: unknown } | null>(null);
+  const [panel, setPanel] = useState<{
+    title: string;
+    json: unknown;
+    /** Set on the one panel an administrator may correct: the extract. */
+    editRecordId?: string;
+  } | null>(null);
+  // The extract being edited, as text, and why it was refused.
+  const [draft, setDraft] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftSaving, setDraftSaving] = useState(false);
   const [pdfFor, setPdfFor] = useState<{ record: StudentRecordEntry; dummy: boolean } | null>(
     null,
   );
@@ -101,9 +110,49 @@ export function RecordsTable({ studentId }: { studentId: string }) {
     }
   };
 
-  const openPanel = async (id: string, label: string, pick: (r: StudentRecordEntry) => unknown) => {
+  const openPanel = async (
+    id: string,
+    key: string,
+    label: string,
+    pick: (r: StudentRecordEntry) => unknown,
+  ) => {
     const record = await fullRecord(id);
-    if (record) setPanel({ title: label, json: pick(record) });
+    if (!record) return;
+    // A finalized record is locked, its extract included.
+    const editable = isAdmin && key === 'extract' && !record.finalizedAt;
+    setPanel({ title: label, json: pick(record), editRecordId: editable ? id : undefined });
+  };
+
+  const closePanel = () => {
+    setPanel(null);
+    setDraft(null);
+    setDraftError(null);
+  };
+
+  /** Saves the corrected extract; the server regenerates the statement from it. */
+  const saveExtract = async () => {
+    if (!panel?.editRecordId || draft === null) return;
+    let extract: unknown;
+    try {
+      extract = JSON.parse(draft);
+    } catch (error) {
+      setDraftError(`That is not valid JSON: ${(error as Error).message}`);
+      return;
+    }
+
+    setDraftSaving(true);
+    setDraftError(null);
+    try {
+      await api.put(`/students/${studentId}/records/${panel.editRecordId}/extract`, { extract });
+      cache.current.delete(panel.editRecordId);
+      toast.success('Extract saved and statement regenerated.');
+      closePanel();
+      await load();
+    } catch (caught) {
+      setDraftError(caught instanceof ApiError ? caught.message : 'Could not save the extract.');
+    } finally {
+      setDraftSaving(false);
+    }
   };
 
   const downloadJson = async (id: string) => {
@@ -218,7 +267,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
                       <td key={item.key}>
                         <button
                           type="button"
-                          onClick={() => void openPanel(record.id, item.label, item.pick)}
+                          onClick={() => void openPanel(record.id, item.key, item.label, item.pick)}
                           disabled={busyId === record.id}
                           className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60"
                         >
@@ -364,17 +413,66 @@ export function RecordsTable({ studentId }: { studentId: string }) {
       <Modal
         open={Boolean(panel)}
         title={panel?.title ?? ''}
+        description={
+          draft !== null
+            ? 'Saving regenerates the statement from this extract, with fresh filler transactions.'
+            : undefined
+        }
         width="lg"
-        onClose={() => setPanel(null)}
+        onClose={closePanel}
         footer={
-          <Button variant="secondary" onClick={() => setPanel(null)}>
-            Close
-          </Button>
+          draft !== null ? (
+            <>
+              <Button variant="secondary" onClick={() => setDraft(null)} disabled={draftSaving}>
+                Cancel
+              </Button>
+              <Button onClick={() => void saveExtract()} loading={draftSaving}>
+                Save
+              </Button>
+            </>
+          ) : (
+            <>
+              {panel?.editRecordId && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setDraftError(null);
+                    setDraft(JSON.stringify(panel.json ?? null, null, 2));
+                  }}
+                >
+                  <PencilIcon />
+                  Edit
+                </Button>
+              )}
+              <Button variant="secondary" onClick={closePanel}>
+                Close
+              </Button>
+            </>
+          )
         }
       >
-        <pre className="max-h-[60vh] overflow-auto rounded-[8px] bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
-          {JSON.stringify(panel?.json ?? null, null, 2)}
-        </pre>
+        {draftError && (
+          <p
+            className="mb-3 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-[var(--color-danger)]"
+            role="alert"
+          >
+            {draftError}
+          </p>
+        )}
+        {draft !== null ? (
+          <textarea
+            aria-label="Extract JSON"
+            rows={24}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            spellCheck={false}
+            className="field-input max-h-[60vh] w-full font-mono text-[12px] leading-relaxed"
+          />
+        ) : (
+          <pre className="max-h-[60vh] overflow-auto rounded-[8px] bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
+            {JSON.stringify(panel?.json ?? null, null, 2)}
+          </pre>
+        )}
       </Modal>
 
       {pdfFor && (

@@ -7,6 +7,7 @@ import * as studentService from '../services/student.service.js';
 import {
   createStudentSchema,
   listStudentsQuerySchema,
+  recordExtractSchema,
   recordParamsSchema,
   statementPdfSchema,
   studentRecordSchema,
@@ -239,6 +240,23 @@ studentsRouter.put(
       { ...body<RecordBody>(req), attachment: attachmentFrom(req) },
       getActor(req),
     );
+    res.json({ record });
+  }),
+);
+
+/**
+ * PUT /api/v1/students/:id/records/:recordId/extract — administrators only:
+ * saves a corrected extract and regenerates the statement from it.
+ */
+studentsRouter.put(
+  '/:id/records/:recordId/extract',
+  requireRole('ADMIN'),
+  validate(recordParamsSchema, 'params'),
+  validate(recordExtractSchema),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    const { extract } = body<{ extract: Record<string, unknown> }>(req);
+    const record = await recordService.updateExtract(id, recordId, extract, getActor(req));
     res.json({ record });
   }),
 );

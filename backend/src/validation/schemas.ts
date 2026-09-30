@@ -126,6 +126,11 @@ export const uuidParamSchema = z.object({
   id: z.string().uuid('Invalid identifier'),
 });
 
+/** Body of the admin extract edit: the corrected extract payload. */
+export const recordExtractSchema = z.object({
+  extract: z.record(z.unknown()),
+});
+
 export const sessionParamsSchema = z.object({
   id: z.string().uuid('Invalid identifier'),
   sessionId: z.string().uuid('Invalid session identifier'),

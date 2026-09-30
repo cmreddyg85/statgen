@@ -1,5 +1,5 @@
 /**
- * SBI statement PDF reader: pulls the account block off page 1 of a statement
+ * SBI statement PDF reader: pulls the account block off the first pages of a statement
  * and turns the Generate-record form payload into the salary periods that
  * generate.js walks month by month.
  */
@@ -263,30 +263,42 @@ function splitAccountNumber(rawValue) {
  * wrap onto the next lines of the same column, so those are followed while
  * they sit at line spacing.
  *
- * ponytail: page 1 only, and an 11pt gap ends the name (lines sit ~9-10pt
- * apart, the next transaction starts ~13pt down); read further pages or match
- * on the date column if a statement lays out differently.
+ * ponytail: account-block page only. Line spacing differs per layout (~9pt or
+ * ~12.5pt), so it is measured from the line above the marker and a gap 20%
+ * wider ends the name. Some layouts wrap mid-word ("CO" / "LONY BRANCH"),
+ * which a space-join breaks, so every transaction on the page is read and the
+ * shortest reading wins — wrong only if all of them wrap mid-word; match on
+ * the date column or read further pages if that shows up.
  */
 function extractBranchTransactions(items, branchCode) {
   if (!branchCode) return "";
 
   const marker = new RegExp(`\\bAT\\s+${escapeRegExp(branchCode)}\\b\\s*(.*)$`);
-  const hit = items.find((item) => marker.test(item.str));
-  if (!hit) return "";
 
-  const below = items
-    .filter((item) => Math.abs(item.x - hit.x) < 2 && item.y < hit.y)
-    .sort((a, b) => b.y - a.y);
+  const names = items
+    .filter((item) => marker.test(item.str))
+    .map((hit) => {
+      const column = items.filter((item) => Math.abs(item.x - hit.x) < 2);
+      const above = column
+        .filter((item) => item.y > hit.y)
+        .sort((a, b) => a.y - b.y)[0];
+      const maxGap = Math.min(above ? (above.y - hit.y) * 1.2 : 11, 16);
 
-  const parts = [hit.str.match(marker)[1]];
-  let lastY = hit.y;
-  for (const line of below) {
-    if (lastY - line.y > 11) break;
-    parts.push(line.str);
-    lastY = line.y;
-  }
+      const parts = [hit.str.match(marker)[1]];
+      let lastY = hit.y;
+      for (const line of column
+        .filter((item) => item.y < hit.y)
+        .sort((a, b) => b.y - a.y)) {
+        if (lastY - line.y > maxGap) break;
+        parts.push(line.str);
+        lastY = line.y;
+      }
 
-  return parts.join(" ").replace(/\s+/g, " ").trim();
+      return parts.join(" ").replace(/\s+/g, " ").trim();
+    })
+    .filter(Boolean);
+
+  return names.sort((a, b) => a.length - b.length)[0] || "";
 }
 
 async function getPageTextItems(pdfDoc, pageNumber) {
@@ -365,14 +377,36 @@ async function extractSbiAccountInfo(pdfBuffer, password, details = {}) {
     throw error;
   }
 
-  const { items, pageWidth } = await getPageTextItems(pdfDoc, 1);
-  const midX = pageWidth / 2;
+  // The account block is on page 1, or on page 2 when the statement opens
+  // with a "Relationship Summary" cover page: take the first page that carries
+  // the labeled Account Number.
+  // ponytail: first 3 pages only; raise if a statement grows a longer preamble.
+  let items, left, right;
+  for (let pageNumber = 1; pageNumber <= Math.min(pdfDoc.numPages, 3); pageNumber++) {
+    const page = await getPageTextItems(pdfDoc, pageNumber);
+    const midX = page.pageWidth / 2;
 
-  const leftLines = clusterLines(items.filter((item) => item.x < midX));
-  const rightLines = clusterLines(items.filter((item) => item.x >= midX));
+    items = page.items;
+    left = processLabeledColumn(
+      clusterLines(items.filter((item) => item.x < midX)),
+      LEFT_FIELD_LABELS,
+    );
+    right = processLabeledColumn(
+      clusterLines(items.filter((item) => item.x >= midX)),
+      RIGHT_FIELD_LABELS,
+    );
 
-  const left = processLabeledColumn(leftLines, LEFT_FIELD_LABELS);
-  const right = processLabeledColumn(rightLines, RIGHT_FIELD_LABELS);
+    if (right.fields.accountNumberRaw) break;
+  }
+
+  if (!right.fields.accountNumberRaw) {
+    await loadingTask.destroy();
+    const wrappedError = new Error(
+      "Could not find the account details in the first pages of this PDF.",
+    );
+    wrappedError.code = "INVALID_PDF";
+    throw wrappedError;
+  }
 
   const { customerName, email, address } = extractCustomerBlock(
     left.prefixLines,
