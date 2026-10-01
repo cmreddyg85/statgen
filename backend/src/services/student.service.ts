@@ -61,7 +61,12 @@ export async function getById(id: string, actor: RequestActor): Promise<StudentR
 }
 
 export async function create(
-  input: { name: string; mobileNumber: string; offerCompany: string | null },
+  input: {
+    name: string;
+    mobileNumber: string;
+    offerCompany: string | null;
+    referredBy?: string | null;
+  },
   actor: RequestActor,
 ): Promise<StudentRecord> {
   const student = await students.insertStudent({
@@ -85,7 +90,12 @@ export async function create(
 
 export async function update(
   id: string,
-  changes: { name?: string; mobileNumber?: string; offerCompany?: string | null },
+  changes: {
+    name?: string;
+    mobileNumber?: string;
+    offerCompany?: string | null;
+    referredBy?: string | null;
+  },
   actor: RequestActor,
 ): Promise<StudentRecord> {
   // Resolves the record and enforces ownership before anything is written.

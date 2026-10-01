@@ -22,6 +22,7 @@ export interface Student {
   name: string;
   mobileNumber: string;
   offerCompany: string | null;
+  referredBy: string | null;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;

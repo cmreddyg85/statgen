@@ -269,7 +269,7 @@ export function StudentsClient() {
                           {student.name}
                         </Link>
                       </td>
-                      <td className="tabular-nums">{formatMobile(student.mobileNumber)}</td>
+                      <td className="tabular-nums">{formatMobile(student.mobileNumber) || <span className="text-[var(--color-muted)]">—</span>}</td>
                       <td>{student.offerCompany ?? <span className="text-[var(--color-muted)]">—</span>}</td>
                       {isAdmin && status !== 'active' && (
                         <td>

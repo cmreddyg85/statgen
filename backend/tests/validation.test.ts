@@ -34,6 +34,20 @@ describe('student validation', () => {
     expect(result.offerCompany).toBeNull();
   });
 
+  it('lets the mobile number be left out or blank, and blanks referred by to null', () => {
+    expect(createStudentSchema.parse({ name: 'Asha Menon' }).mobileNumber).toBe('');
+    const result = createStudentSchema.parse({
+      name: 'Asha Menon',
+      mobileNumber: ' ',
+      referredBy: '  ',
+    });
+    expect(result.mobileNumber).toBe('');
+    expect(result.referredBy).toBeNull();
+    expect(createStudentSchema.parse({ name: 'Asha Menon', referredBy: ' Ravi ' }).referredBy).toBe(
+      'Ravi',
+    );
+  });
+
   it('rejects a too-short name and a malformed mobile number', () => {
     expect(createStudentSchema.safeParse({ name: 'A', mobileNumber: '9876543210' }).success).toBe(
       false,

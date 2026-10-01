@@ -96,8 +96,9 @@ export function StudentDetail({ studentId }: { studentId: string }) {
             Student details
           </h2>
           <dl className="grid gap-x-6 gap-y-4 px-5 py-4 sm:grid-cols-2">
-            <Detail label="Mobile number" value={formatMobile(student.mobileNumber)} />
+            <Detail label="Mobile number" value={formatMobile(student.mobileNumber) || '—'} />
             <Detail label="Offer company" value={student.offerCompany ?? '—'} />
+            <Detail label="Referred by" value={student.referredBy ?? '—'} />
             <Detail
               label="Status"
               value={

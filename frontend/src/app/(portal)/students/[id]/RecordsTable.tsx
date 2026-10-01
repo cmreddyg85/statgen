@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
-import { sortKeys } from '@/lib/format';
 import type { StudentRecordEntry, StudentRecordSummary } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
 import { Button, LinkButton } from '@/components/Button';
@@ -21,13 +20,13 @@ const PANELS = [
   {
     key: 'account',
     label: 'Account details',
-    pick: (r: StudentRecordEntry) => sortKeys(r.statement.accountInfo),
+    pick: (r: StudentRecordEntry) => r.statement.accountInfo,
+    forUsers: true,
   },
   {
     key: 'salary',
     label: 'Salary transactions',
     pick: (r: StudentRecordEntry) => r.statement.salaryTrans,
-    // The one panel a user sees too.
     forUsers: true,
   },
   {
@@ -38,6 +37,59 @@ const PANELS = [
 ] as const;
 
 /**
+ * The account block laid out as the statement prints it — customer side on
+ * the left, branch side on the right — so it can be checked against the PDF
+ * line by line. Keys the statement does not print sit where they belong.
+ */
+const ACCOUNT_LEFT: [string, string][] = [
+  ['customerName', 'Customer Name'],
+  ['email', 'Email'],
+  ['address', 'Address'],
+  ['unclearedAmount', 'Uncleared Amount'],
+  ['modBalance', '+MOD Bal'],
+  ['lien', 'Lien'],
+  ['limit', 'Limit'],
+  ['monthlyAvgBalance', 'Monthly Avg Balance'],
+  ['interestRate', 'Interest Rate'],
+  ['drawingPower', 'Drawing Power'],
+  ['accountOpenDate', 'Account open Date'],
+  ['password', 'PDF Password'],
+];
+const ACCOUNT_RIGHT: [string, string][] = [
+  ['district', 'Branch District'],
+  ['bankAddress', 'Branch Address'],
+  ['branchCode', 'Branch Code'],
+  ['branchName', 'Branch Name'],
+  ['branchTransactions', 'Branch Name in Transactions'],
+  ['branchEmail', 'Branch Email ID'],
+  ['branchPhone', 'Branch Phone'],
+  ['cifNumber', 'CIF Number'],
+  ['accountNumber', 'Account Number'],
+  ['accountTypeSuffix', 'Account Type Suffix'],
+  ['product', 'Product'],
+  ['ifscCode', 'IFSC Code'],
+  ['currency', 'Currency'],
+  ['accountStatus', 'Account Status'],
+  ['ckycrNumber', 'CKYCR Number'],
+  ['micrCode', 'MICR Code'],
+  ['nomineeName', 'Nominee Name'],
+];
+// Filled in when a statement is downloaded, so there is nothing to verify here.
+const ACCOUNT_HIDDEN = new Set(['clearBalance', 'dateOfStatement', 'fromDate', 'toDate']);
+
+/** The two columns for one record; keys nobody listed trail the left one. */
+function accountColumns(values: Record<string, string>): [string, string][][] {
+  const listed = new Set([...ACCOUNT_LEFT, ...ACCOUNT_RIGHT].map(([key]) => key));
+  const rest = Object.keys(values)
+    .filter((key) => !listed.has(key) && !ACCOUNT_HIDDEN.has(key))
+    .map((key): [string, string] => [key, key]);
+  return [
+    [...ACCOUNT_LEFT, ...rest].filter(([key]) => key in values),
+    ACCOUNT_RIGHT.filter(([key]) => key in values),
+  ];
+}
+
+/**
  * The statements generated for one student. The list carries summaries only —
  * a statement payload is hundreds of kilobytes — so a record is fetched the
  * first time one of its panels, downloads or the PDF dialog is opened.
@@ -45,7 +97,7 @@ const PANELS = [
 export function RecordsTable({ studentId }: { studentId: string }) {
   const toast = useToast();
   // The raw payloads are an administrator's view; a user sees only the
-  // salary transactions and otherwise works with the downloads.
+  // account details and salary transactions, and otherwise the downloads.
   const { isAdmin } = useSession();
   const panels = PANELS.filter((item) => isAdmin || ('forUsers' in item && item.forUsers));
   const [records, setRecords] = useState<StudentRecordSummary[]>([]);
@@ -62,6 +114,13 @@ export function RecordsTable({ studentId }: { studentId: string }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
+  // The account details dialog, and its fields while they are being edited.
+  const [account, setAccount] = useState<{
+    recordId: string;
+    values: Record<string, string>;
+    editable: boolean;
+  } | null>(null);
+  const [accountDraft, setAccountDraft] = useState<Record<string, string> | null>(null);
   const [pdfFor, setPdfFor] = useState<{ record: StudentRecordEntry; dummy: boolean } | null>(
     null,
   );
@@ -118,6 +177,16 @@ export function RecordsTable({ studentId }: { studentId: string }) {
   ) => {
     const record = await fullRecord(id);
     if (!record) return;
+    if (key === 'account') {
+      setDraftError(null);
+      setAccountDraft(null);
+      setAccount({
+        recordId: id,
+        values: record.statement.accountInfo,
+        editable: !record.finalizedAt,
+      });
+      return;
+    }
     // A finalized record is locked, its extract included.
     const editable = isAdmin && key === 'extract' && !record.finalizedAt;
     setPanel({ title: label, json: pick(record), editRecordId: editable ? id : undefined });
@@ -150,6 +219,28 @@ export function RecordsTable({ studentId }: { studentId: string }) {
       await load();
     } catch (caught) {
       setDraftError(caught instanceof ApiError ? caught.message : 'Could not save the extract.');
+    } finally {
+      setDraftSaving(false);
+    }
+  };
+
+  /** Saves the account block only; the transactions are left as generated. */
+  const saveAccount = async () => {
+    if (!account || !accountDraft) return;
+    setDraftSaving(true);
+    setDraftError(null);
+    try {
+      await api.put(`/students/${studentId}/records/${account.recordId}/account-info`, {
+        accountInfo: accountDraft,
+      });
+      cache.current.delete(account.recordId);
+      toast.success('Account details updated.');
+      setAccount({ ...account, values: accountDraft });
+      setAccountDraft(null);
+    } catch (caught) {
+      setDraftError(
+        caught instanceof ApiError ? caught.message : 'Could not update the account details.',
+      );
     } finally {
       setDraftSaving(false);
     }
@@ -472,6 +563,93 @@ export function RecordsTable({ studentId }: { studentId: string }) {
           <pre className="max-h-[60vh] overflow-auto rounded-[8px] bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
             {JSON.stringify(panel?.json ?? null, null, 2)}
           </pre>
+        )}
+      </Modal>
+
+      <Modal
+        open={Boolean(account)}
+        title="Account details"
+        description={
+          accountDraft
+            ? 'Updates the account details only; transactions are not regenerated. Editing the record later restores the details read from the PDF.'
+            : undefined
+        }
+        width="lg"
+        onClose={() => setAccount(null)}
+        footer={
+          accountDraft ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setAccountDraft(null);
+                  setDraftError(null);
+                }}
+                disabled={draftSaving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => void saveAccount()} loading={draftSaving}>
+                Update
+              </Button>
+            </>
+          ) : (
+            <>
+              {account?.editable && (
+                <Button variant="secondary" onClick={() => setAccountDraft({ ...account.values })}>
+                  <PencilIcon />
+                  Edit
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => setAccount(null)}>
+                Close
+              </Button>
+            </>
+          )
+        }
+      >
+        {draftError && accountDraft && (
+          <p
+            className="mb-3 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-[var(--color-danger)]"
+            role="alert"
+          >
+            {draftError}
+          </p>
+        )}
+        {account && (
+          <div className="grid max-h-[60vh] grid-cols-1 gap-x-8 gap-y-3 overflow-auto sm:grid-cols-2">
+            {accountColumns(account.values).map((column, index) => (
+              <dl key={index} className="space-y-3">
+                {column.map(([key, label]) => (
+                  <div key={key}>
+                    <dt>
+                      <label className="field-label" htmlFor={`account-${key}`}>
+                        {label}
+                      </label>
+                    </dt>
+                    <dd>
+                      {accountDraft ? (
+                        <input
+                          id={`account-${key}`}
+                          className="field-input w-full"
+                          value={accountDraft[key] ?? ''}
+                          onChange={(event) =>
+                            setAccountDraft({ ...accountDraft, [key]: event.target.value })
+                          }
+                        />
+                      ) : (
+                        <p id={`account-${key}`} className="break-words text-[14px]">
+                          {account.values[key] || (
+                            <span className="text-[var(--color-muted)]">—</span>
+                          )}
+                        </p>
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ))}
+          </div>
         )}
       </Modal>
 

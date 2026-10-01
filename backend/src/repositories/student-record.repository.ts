@@ -158,6 +158,25 @@ export async function updateRecord(
   return rows[0] ? mapSummary(rows[0]) : null;
 }
 
+/** Overwrites the statement's account block and nothing else. */
+export async function updateAccountInfo(
+  studentId: string,
+  id: string,
+  accountInfo: Record<string, string>,
+): Promise<StudentRecordSummary | null> {
+  const { rows } = await query<SummaryRow>(
+    `WITH updated AS (
+       UPDATE student_records
+          SET statement_json = jsonb_set(statement_json, '{accountInfo}', $3::jsonb)
+        WHERE student_id = $1 AND id = $2
+        RETURNING *
+     )
+     SELECT ${COLUMNS} FROM updated r ${JOINS}`,
+    [studentId, id, JSON.stringify(accountInfo)],
+  );
+  return rows[0] ? mapSummary(rows[0]) : null;
+}
+
 export async function deleteRecord(studentId: string, id: string): Promise<boolean> {
   const { rowCount } = await query(
     'DELETE FROM student_records WHERE student_id = $1 AND id = $2',

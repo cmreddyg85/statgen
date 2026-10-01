@@ -146,6 +146,35 @@ export async function updateExtract(
   return updated;
 }
 
+/**
+ * Correction of the statement's account block alone: the transactions stay as
+ * generated. The extract is not touched, so a later record edit regenerates
+ * from it and puts the PDF's own account details back.
+ */
+export async function updateAccountInfo(
+  studentId: string,
+  id: string,
+  accountInfo: Record<string, string>,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  await studentService.getById(studentId, actor);
+  await assertEditable(studentId, id);
+  const updated = await records.updateAccountInfo(studentId, id, accountInfo);
+  if (!updated) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_UPDATED',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId, accountInfoEdited: true },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return updated;
+}
+
 export async function remove(
   studentId: string,
   id: string,

@@ -6,6 +6,7 @@ interface StudentRow {
   name: string;
   mobile_number: string;
   offer_company: string | null;
+  referred_by: string | null;
   created_by: string;
   created_by_name: string | null;
   created_at: string;
@@ -19,6 +20,7 @@ function mapStudentRow(row: StudentRow): StudentRecord {
     name: row.name,
     mobileNumber: row.mobile_number,
     offerCompany: row.offer_company,
+    referredBy: row.referred_by,
     createdBy: row.created_by,
     createdByName: row.created_by_name,
     createdAt: row.created_at,
@@ -28,7 +30,7 @@ function mapStudentRow(row: StudentRow): StudentRecord {
 }
 
 const SELECT_STUDENT = `
-  SELECT s.id, s.name, s.mobile_number, s.offer_company,
+  SELECT s.id, s.name, s.mobile_number, s.offer_company, s.referred_by,
          s.created_by, cu.name AS created_by_name,
          s.created_at, s.updated_at, s.archived_at
     FROM students s
@@ -108,13 +110,14 @@ export async function insertStudent(input: {
   name: string;
   mobileNumber: string;
   offerCompany: string | null;
+  referredBy?: string | null;
   createdBy: string;
 }): Promise<StudentRecord> {
   const { rows } = await query<{ id: string }>(
-    `INSERT INTO students (name, mobile_number, offer_company, created_by)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO students (name, mobile_number, offer_company, referred_by, created_by)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING id`,
-    [input.name, input.mobileNumber, input.offerCompany, input.createdBy],
+    [input.name, input.mobileNumber, input.offerCompany, input.referredBy ?? null, input.createdBy],
   );
   return (await findById(rows[0]!.id))!;
 }
@@ -125,6 +128,7 @@ export async function updateStudent(
     name?: string;
     mobileNumber?: string;
     offerCompany?: string | null;
+    referredBy?: string | null;
   },
 ): Promise<StudentRecord | null> {
   const assignments: string[] = [];
@@ -141,6 +145,10 @@ export async function updateStudent(
   if (changes.offerCompany !== undefined) {
     params.push(changes.offerCompany);
     assignments.push(`offer_company = $${params.length}`);
+  }
+  if (changes.referredBy !== undefined) {
+    params.push(changes.referredBy);
+    assignments.push(`referred_by = $${params.length}`);
   }
   if (assignments.length === 0) return findById(id);
 

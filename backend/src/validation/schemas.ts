@@ -34,12 +34,20 @@ export function normalizeMobileNumber(value: string): string {
 export const mobileNumberSchema = z
   .string()
   .trim()
-  .min(1, 'Mobile number is required')
   .transform(normalizeMobileNumber)
+  // Optional: blank is stored as ''. Anything typed must be a real number.
   .refine(
-    (value) => env.mobileNumberPattern.test(value),
+    (value) => value === '' || env.mobileNumberPattern.test(value),
     'Enter a valid mobile number',
   );
+
+export const referredBySchema = z
+  .string()
+  .trim()
+  .max(150, 'Referred by must be at most 150 characters')
+  .transform((value) => (value.length === 0 ? null : value))
+  .nullable()
+  .optional();
 
 export const offerCompanySchema = z
   .string()
@@ -99,8 +107,9 @@ export const listUsersQuerySchema = paginationSchema.extend({
 
 export const createStudentSchema = z.object({
   name: nameSchema,
-  mobileNumber: mobileNumberSchema,
+  mobileNumber: mobileNumberSchema.default(''),
   offerCompany: offerCompanySchema,
+  referredBy: referredBySchema,
 });
 
 export const updateStudentSchema = z
@@ -108,6 +117,7 @@ export const updateStudentSchema = z
     name: nameSchema.optional(),
     mobileNumber: mobileNumberSchema.optional(),
     offerCompany: offerCompanySchema,
+    referredBy: referredBySchema,
   })
   .refine((value) => Object.values(value).some((entry) => entry !== undefined), {
     message: 'Provide at least one field to update',
@@ -129,6 +139,11 @@ export const uuidParamSchema = z.object({
 /** Body of the admin extract edit: the corrected extract payload. */
 export const recordExtractSchema = z.object({
   extract: z.record(z.unknown()),
+});
+
+/** Body of the account details edit: the statement's account block, as text. */
+export const recordAccountInfoSchema = z.object({
+  accountInfo: z.record(z.string().max(500)),
 });
 
 export const sessionParamsSchema = z.object({

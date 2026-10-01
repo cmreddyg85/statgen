@@ -84,6 +84,7 @@ export interface StudentRecord {
   name: string;
   mobileNumber: string;
   offerCompany: string | null;
+  referredBy: string | null;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;

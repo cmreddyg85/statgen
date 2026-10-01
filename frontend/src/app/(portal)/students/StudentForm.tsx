@@ -21,6 +21,7 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
   const [name, setName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [offerCompany, setOfferCompany] = useState('');
+  const [referredBy, setReferredBy] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -30,6 +31,7 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
     setName(student?.name ?? '');
     setMobileNumber(student?.mobileNumber ?? '');
     setOfferCompany(student?.offerCompany ?? '');
+    setReferredBy(student?.referredBy ?? '');
     setFormError(null);
     setFieldErrors({});
   }, [open, student]);
@@ -48,6 +50,7 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
           name: name.trim(),
           mobileNumber: mobileNumber.trim(),
           offerCompany: offerCompany.trim(),
+          referredBy: referredBy.trim(),
         });
         onSaved('Student updated.');
       } else {
@@ -55,6 +58,7 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
           name: name.trim(),
           mobileNumber: mobileNumber.trim(),
           offerCompany: offerCompany.trim(),
+          referredBy: referredBy.trim(),
         });
         onSaved('Student created.');
       }
@@ -105,12 +109,11 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
 
         <TextField
           label="Mobile number"
-          required
           inputMode="tel"
           value={mobileNumber}
           onChange={(event) => setMobileNumber(event.target.value)}
           error={fieldErrors.mobileNumber}
-          hint="Digits only are stored; spaces and symbols are removed automatically."
+          hint="Optional. Digits only are stored; spaces and symbols are removed automatically."
           disabled={saving}
           autoComplete="off"
         />
@@ -120,6 +123,16 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
           value={offerCompany}
           onChange={(event) => setOfferCompany(event.target.value)}
           error={fieldErrors.offerCompany}
+          hint="Optional. Up to 150 characters."
+          disabled={saving}
+          autoComplete="off"
+        />
+
+        <TextField
+          label="Referred by"
+          value={referredBy}
+          onChange={(event) => setReferredBy(event.target.value)}
+          error={fieldErrors.referredBy}
           hint="Optional. Up to 150 characters."
           disabled={saving}
           autoComplete="off"

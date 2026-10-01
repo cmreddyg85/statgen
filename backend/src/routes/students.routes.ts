@@ -7,6 +7,7 @@ import * as studentService from '../services/student.service.js';
 import {
   createStudentSchema,
   listStudentsQuerySchema,
+  recordAccountInfoSchema,
   recordExtractSchema,
   recordParamsSchema,
   statementPdfSchema,
@@ -55,6 +56,7 @@ studentsRouter.post(
       name: string;
       mobileNumber: string;
       offerCompany: string | null;
+      referredBy?: string | null;
     }>(req);
     const student = await studentService.create(payload, getActor(req));
     res.status(201).json({ student });
@@ -82,6 +84,7 @@ studentsRouter.patch(
       name?: string;
       mobileNumber?: string;
       offerCompany?: string | null;
+      referredBy?: string | null;
     }>(req);
     res.json({ student: await studentService.update(id, changes, getActor(req)) });
   }),
@@ -257,6 +260,22 @@ studentsRouter.put(
     const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
     const { extract } = body<{ extract: Record<string, unknown> }>(req);
     const record = await recordService.updateExtract(id, recordId, extract, getActor(req));
+    res.json({ record });
+  }),
+);
+
+/**
+ * PUT /api/v1/students/:id/records/:recordId/account-info — corrects the
+ * statement's account block only; the transactions are left as generated.
+ */
+studentsRouter.put(
+  '/:id/records/:recordId/account-info',
+  validate(recordParamsSchema, 'params'),
+  validate(recordAccountInfoSchema),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    const { accountInfo } = body<{ accountInfo: Record<string, string> }>(req);
+    const record = await recordService.updateAccountInfo(id, recordId, accountInfo, getActor(req));
     res.json({ record });
   }),
 );
