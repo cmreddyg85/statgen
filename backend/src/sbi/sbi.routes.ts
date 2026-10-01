@@ -10,6 +10,7 @@ import {
 } from '../validation/schemas.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { AppError, badRequest } from '../utils/errors.js';
+import type { RecordBank } from '../types.js';
 import { extractSbiAccountInfo } from './extract.js';
 import { generateSbiTransactions } from './generate.js';
 import { buildSalaryPeriods, parseDetails } from './salary-periods.js';
@@ -154,100 +155,105 @@ sbiRouter.post(
 );
 
 /**
- * Standalone reports, built on the SBI screen from a pasted payload rather
- * than from a student's Generate form. Administrators only.
+ * Standalone reports, built on the SBI or IDBI screen from a pasted payload
+ * rather than from a student's Generate form. Administrators only. Mounted
+ * once per bank: /api/v1/sbi/reports and /api/v1/idbi/reports.
  */
-const reportsRouter = Router();
-reportsRouter.use(requireAdmin);
+export function reportsRouterFor(bank: RecordBank): Router {
+  const reportsRouter = Router();
+  reportsRouter.use(requireAdmin);
 
-/** GET /api/v1/sbi/reports */
-reportsRouter.get(
-  '/',
-  asyncHandler(async (_req, res) => {
-    res.json({ reports: await reportService.list() });
-  }),
-);
+  /** GET /api/v1/sbi/reports */
+  reportsRouter.get(
+    '/',
+    asyncHandler(async (_req, res) => {
+      res.json({ reports: await reportService.list(bank) });
+    }),
+  );
 
-/** POST /api/v1/sbi/reports */
-reportsRouter.post(
-  '/',
-  validate(sbiReportSchema),
-  asyncHandler(async (req, res) => {
-    const { source, input } = body<{ source: 'extract' | 'transactions'; input: string }>(req);
-    const report = await reportService.create(source, input, getActor(req));
-    res.status(201).json({ report });
-  }),
-);
-
-/** GET /api/v1/sbi/reports/:id */
-reportsRouter.get(
-  '/:id',
-  validate(uuidParamSchema, 'params'),
-  asyncHandler(async (req, res) => {
-    const { id } = routeParams<{ id: string }>(req);
-    res.json({ report: await reportService.getById(id) });
-  }),
-);
-
-/** PUT /api/v1/sbi/reports/:id */
-reportsRouter.put(
-  '/:id',
-  validate(uuidParamSchema, 'params'),
-  validate(sbiReportSchema),
-  asyncHandler(async (req, res) => {
-    const { id } = routeParams<{ id: string }>(req);
-    const { source, input } = body<{ source: 'extract' | 'transactions'; input: string }>(req);
-    res.json({ report: await reportService.update(id, source, input, getActor(req)) });
-  }),
-);
-
-/** DELETE /api/v1/sbi/reports/:id */
-reportsRouter.delete(
-  '/:id',
-  validate(uuidParamSchema, 'params'),
-  asyncHandler(async (req, res) => {
-    const { id } = routeParams<{ id: string }>(req);
-    await reportService.remove(id, getActor(req));
-    res.json({ success: true });
-  }),
-);
-
-/** POST /api/v1/sbi/reports/:id/finalize and /unfinalize — locks or unlocks the report. */
-for (const [path, finalized] of [
-  ['finalize', true],
-  ['unfinalize', false],
-] as const) {
+  /** POST /api/v1/sbi/reports */
   reportsRouter.post(
-    `/:id/${path}`,
+    '/',
+    validate(sbiReportSchema),
+    asyncHandler(async (req, res) => {
+      const { source, input } = body<{ source: 'extract' | 'transactions'; input: string }>(req);
+      const report = await reportService.create(bank, source, input, getActor(req));
+      res.status(201).json({ report });
+    }),
+  );
+
+  /** GET /api/v1/sbi/reports/:id */
+  reportsRouter.get(
+    '/:id',
     validate(uuidParamSchema, 'params'),
     asyncHandler(async (req, res) => {
       const { id } = routeParams<{ id: string }>(req);
-      res.json({ report: await reportService.setFinalized(id, finalized, getActor(req)) });
+      res.json({ report: await reportService.getById(bank, id) });
     }),
   );
+
+  /** PUT /api/v1/sbi/reports/:id */
+  reportsRouter.put(
+    '/:id',
+    validate(uuidParamSchema, 'params'),
+    validate(sbiReportSchema),
+    asyncHandler(async (req, res) => {
+      const { id } = routeParams<{ id: string }>(req);
+      const { source, input } = body<{ source: 'extract' | 'transactions'; input: string }>(req);
+      res.json({ report: await reportService.update(bank, id, source, input, getActor(req)) });
+    }),
+  );
+
+  /** DELETE /api/v1/sbi/reports/:id */
+  reportsRouter.delete(
+    '/:id',
+    validate(uuidParamSchema, 'params'),
+    asyncHandler(async (req, res) => {
+      const { id } = routeParams<{ id: string }>(req);
+      await reportService.remove(bank, id, getActor(req));
+      res.json({ success: true });
+    }),
+  );
+
+  /** POST /api/v1/sbi/reports/:id/finalize and /unfinalize — locks or unlocks the report. */
+  for (const [path, finalized] of [
+    ['finalize', true],
+    ['unfinalize', false],
+  ] as const) {
+    reportsRouter.post(
+      `/:id/${path}`,
+      validate(uuidParamSchema, 'params'),
+      asyncHandler(async (req, res) => {
+        const { id } = routeParams<{ id: string }>(req);
+        res.json({ report: await reportService.setFinalized(bank, id, finalized, getActor(req)) });
+      }),
+    );
+  }
+
+  /** POST /api/v1/sbi/reports/:id/statement-pdf */
+  reportsRouter.post(
+    '/:id/statement-pdf',
+    validate(uuidParamSchema, 'params'),
+    validate(statementPdfSchema),
+    asyncHandler(async (req, res) => {
+      const { id } = routeParams<{ id: string }>(req);
+      const options = body<{
+        fromDate: string;
+        toDate: string;
+        dateOfStatement?: string;
+        dummy: boolean;
+        protect: boolean;
+        password?: string;
+      }>(req);
+
+      const { pdf, fileName } = await reportService.statementPdf(bank, id, options);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(pdf);
+    }),
+  );
+
+    return reportsRouter;
 }
 
-/** POST /api/v1/sbi/reports/:id/statement-pdf */
-reportsRouter.post(
-  '/:id/statement-pdf',
-  validate(uuidParamSchema, 'params'),
-  validate(statementPdfSchema),
-  asyncHandler(async (req, res) => {
-    const { id } = routeParams<{ id: string }>(req);
-    const options = body<{
-      fromDate: string;
-      toDate: string;
-      dateOfStatement?: string;
-      dummy: boolean;
-      protect: boolean;
-      password?: string;
-    }>(req);
-
-    const { pdf, fileName } = await reportService.statementPdf(id, options);
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.send(pdf);
-  }),
-);
-
-sbiRouter.use('/reports', reportsRouter);
+sbiRouter.use('/reports', reportsRouterFor('SBI'));

@@ -2,8 +2,13 @@ import { recordAudit } from './audit.service.js';
 import * as studentService from './student.service.js';
 import * as records from '../repositories/student-record.repository.js';
 import type { RequestActor, StudentRecordEntry, StudentRecordSummary } from '../types.js';
+import { generateIdbiTransactions } from '../idbi/generate.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
-import { renderStatement, type StatementPayload } from '../sbi/statement-render.js';
+import {
+  renderIdbiStatement,
+  renderStatement,
+  type StatementPayload,
+} from '../sbi/statement-render.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 
 /**
@@ -44,7 +49,7 @@ export async function create(
     action: 'STUDENT_RECORD_CREATED',
     entityType: 'student_record',
     entityId: created.id,
-    metadata: { studentId },
+    metadata: { studentId, bank: created.bank },
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
@@ -113,7 +118,8 @@ export async function updateExtract(
 
   let statement;
   try {
-    statement = generateSbiTransactions(extract);
+    statement =
+      existing.bank === 'IDBI' ? generateIdbiTransactions(extract) : generateSbiTransactions(extract);
   } catch (error) {
     throw badRequest(`Could not generate from that extract: ${(error as Error).message}`);
   }
@@ -209,8 +215,9 @@ export async function getAttachment(
 }
 
 /**
- * Finalizing marks the one record that counts for a student. Only one can be
- * finalized at a time, and the other one has to be released first — silently
+ * Finalizing marks the one record that counts for a student, per bank: one
+ * SBI and one IDBI record can each be finalized. Within a bank only one at a
+ * time, and the other one has to be released first — silently
  * moving the flag would unlock a record someone had deliberately frozen.
  */
 export async function finalize(
@@ -224,10 +231,10 @@ export async function finalize(
   if (!existing) throw notFound('Generated record not found.');
   if (existing.finalizedAt) return existing;
 
-  const alreadyFinal = await records.findFinalized(studentId);
+  const alreadyFinal = await records.findFinalized(studentId, existing.bank);
   if (alreadyFinal) {
     throw conflict(
-      'Another record is already finalized for this student. Unfinalize that one first.',
+      `Another ${existing.bank} record is already finalized for this student. Unfinalize that one first.`,
     );
   }
 
@@ -284,6 +291,9 @@ export async function setDownloadReleased(
 
   const existing = await records.findSummary(studentId, id);
   if (!existing) throw notFound('Generated record not found.');
+  if (released && existing.bank === 'IDBI') {
+    throw conflict('IDBI-format records only have the sample PDF; there is nothing to release.');
+  }
   if (released && !existing.finalizedAt) {
     throw conflict('Finalize the record before releasing its statement.');
   }
@@ -333,6 +343,11 @@ export async function statementPdf(
 
   const record = await records.findById(studentId, id);
   if (!record) throw notFound('Generated record not found.');
+
+  // Always SAMPLE-marked, so anyone with access to the student may download it.
+  if (record.bank === 'IDBI') {
+    return renderIdbiStatement(record.statement as StatementPayload, options);
+  }
 
   const mayDownloadClean =
     actor.user.role === 'ADMIN' || Boolean(record.downloadReleasedAt);

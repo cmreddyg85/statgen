@@ -1,9 +1,10 @@
 import { query } from '../db/pool.js';
-import type { StudentRecordEntry, StudentRecordSummary } from '../types.js';
+import type { RecordBank, StudentRecordEntry, StudentRecordSummary } from '../types.js';
 
 interface RecordRow {
   id: string;
   student_id: string;
+  bank: RecordBank;
   input_json: unknown;
   extract_json: unknown;
   statement_json: unknown;
@@ -25,6 +26,7 @@ function mapSummary(row: SummaryRow): StudentRecordSummary {
   return {
     id: row.id,
     studentId: row.student_id,
+    bank: row.bank,
     createdBy: row.created_by,
     createdByName: row.created_by_name,
     createdAt: row.created_at,
@@ -47,7 +49,7 @@ function mapRecord(row: RecordRow): StudentRecordEntry {
   };
 }
 
-const COLUMNS = `r.id, r.student_id, r.created_by, u.name AS created_by_name,
+const COLUMNS = `r.id, r.student_id, r.bank, r.created_by, u.name AS created_by_name,
                  r.created_at, r.updated_at, r.attachment_name,
                  r.finalized_at, r.finalized_by, f.name AS finalized_by_name,
                  r.download_released_at, r.download_released_by`;
@@ -93,6 +95,8 @@ export interface RecordAttachment {
 }
 
 export interface RecordPayload {
+  /** Fixed at creation; an update leaves the stored bank as it is. */
+  bank?: RecordBank;
   input: unknown;
   extract: unknown;
   statement: unknown;
@@ -108,8 +112,8 @@ export async function insertRecord(
     `WITH inserted AS (
        INSERT INTO student_records
          (student_id, input_json, extract_json, statement_json, created_by,
-          attachment, attachment_name, attachment_type)
-       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5, $6, $7, $8)
+          attachment, attachment_name, attachment_type, bank)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5, $6, $7, $8, $9)
        RETURNING *
      )
      SELECT ${COLUMNS} FROM inserted r ${JOINS}`,
@@ -122,6 +126,7 @@ export async function insertRecord(
       payload.attachment?.buffer ?? null,
       payload.attachment?.name ?? null,
       payload.attachment?.type ?? null,
+      payload.bank ?? 'SBI',
     ],
   );
   return mapSummary(rows[0]!);
@@ -224,14 +229,15 @@ export async function findSummary(
   return rows[0] ? mapSummary(rows[0]) : null;
 }
 
-/** The student's finalized record, if one is. */
+/** The student's finalized record for one bank, if one is. */
 export async function findFinalized(
   studentId: string,
+  bank: RecordBank,
 ): Promise<StudentRecordSummary | null> {
   const { rows } = await query<SummaryRow>(
     `SELECT ${COLUMNS} FROM student_records r ${JOINS}
-      WHERE r.student_id = $1 AND r.finalized_at IS NOT NULL`,
-    [studentId],
+      WHERE r.student_id = $1 AND r.bank = $2 AND r.finalized_at IS NOT NULL`,
+    [studentId, bank],
   );
   return rows[0] ? mapSummary(rows[0]) : null;
 }

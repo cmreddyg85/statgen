@@ -120,7 +120,8 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           </dl>
         </section>
 
-        <RecordsTable studentId={student.id} />
+        <RecordsTable studentId={student.id} bank="SBI" />
+        <RecordsTable studentId={student.id} bank="IDBI" />
       </div>
     </>
   );

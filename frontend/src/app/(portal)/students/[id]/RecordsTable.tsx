@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
-import type { StudentRecordEntry, StudentRecordSummary } from '@/lib/types';
+import type { RecordBank, StudentRecordEntry, StudentRecordSummary } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
 import { Button, LinkButton } from '@/components/Button';
 import { StatementDialog, downloadStatementJson } from '@/components/StatementDialog';
@@ -74,28 +74,62 @@ const ACCOUNT_RIGHT: [string, string][] = [
   ['micrCode', 'MICR Code'],
   ['nomineeName', 'Nominee Name'],
 ];
+/** The mock IDBI account block, in the same two-column arrangement. */
+const IDBI_ACCOUNT_LEFT: [string, string][] = [
+  ['accountName', 'Account Holder Name'],
+  ['addressLine1', 'Address Line 1'],
+  ['addressLine2', 'Address Line 2'],
+  ['addressLine3', 'Address Line 3'],
+  ['accountNumber', 'Account No'],
+  ['accountOpeningDate', 'Account Opening Date'],
+  ['accountStatus', 'Account Status'],
+  ['currency', 'Currency'],
+  ['nominationRegistered', 'Nominee Registered'],
+  ['ckycNumber', 'CKYC Number'],
+  ['password', 'PDF Password'],
+];
+const IDBI_ACCOUNT_RIGHT: [string, string][] = [
+  ['solIdBranchCode', 'Sol Id/Branch Code'],
+  ['branch', 'Account Branch'],
+  ['branchAddress', 'Branch Address'],
+  ['ifsCode', 'Branch IFSC Code'],
+  ['branchEmailId', 'Branch Email Id'],
+  ['nomineeName', 'Nominee Name'],
+  ['nomineePercentage', 'Nominee Percentage'],
+  ['nomineeRelationship', 'Nominee Relationship'],
+];
 // Filled in when a statement is downloaded, so there is nothing to verify here.
 const ACCOUNT_HIDDEN = new Set(['clearBalance', 'dateOfStatement', 'fromDate', 'toDate']);
 
 /** The two columns for one record; keys nobody listed trail the left one. */
-function accountColumns(values: Record<string, string>): [string, string][][] {
-  const listed = new Set([...ACCOUNT_LEFT, ...ACCOUNT_RIGHT].map(([key]) => key));
+function accountColumns(
+  values: Record<string, string>,
+  bank: RecordBank,
+): [string, string][][] {
+  const [left, right] =
+    bank === 'IDBI' ? [IDBI_ACCOUNT_LEFT, IDBI_ACCOUNT_RIGHT] : [ACCOUNT_LEFT, ACCOUNT_RIGHT];
+  const listed = new Set([...left, ...right].map(([key]) => key));
   const rest = Object.keys(values)
     .filter((key) => !listed.has(key) && !ACCOUNT_HIDDEN.has(key))
     .map((key): [string, string] => [key, key]);
   return [
-    [...ACCOUNT_LEFT, ...rest].filter(([key]) => key in values),
-    ACCOUNT_RIGHT.filter(([key]) => key in values),
+    [...left, ...rest].filter(([key]) => key in values),
+    right.filter(([key]) => key in values),
   ];
 }
 
 /**
- * The statements generated for one student. The list carries summaries only —
+ * The statements generated for one student in one bank's format — the
+ * student's page shows an SBI table and an IDBI table, each finalized on its
+ * own. The list carries summaries only —
  * a statement payload is hundreds of kilobytes — so a record is fetched the
  * first time one of its panels, downloads or the PDF dialog is opened.
  */
-export function RecordsTable({ studentId }: { studentId: string }) {
+export function RecordsTable({ studentId, bank }: { studentId: string; bank: RecordBank }) {
   const toast = useToast();
+  // IDBI-format records run on mock data: no uploaded page, and only the
+  // SAMPLE-marked PDF, so there is no clean download to release.
+  const isIdbi = bank === 'IDBI';
   // The raw payloads are an administrator's view; a user sees only the
   // account details and salary transactions, and otherwise the downloads.
   const { isAdmin } = useSession();
@@ -135,7 +169,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
       const { records: rows } = await api.get<{ records: StudentRecordSummary[] }>(
         `/students/${studentId}/records`,
       );
-      setRecords(rows);
+      setRecords(rows.filter((row) => row.bank === bank));
     } catch (caught) {
       setError(
         caught instanceof ApiError ? caught.message : 'Could not load generated records.',
@@ -143,7 +177,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [studentId]);
+  }, [studentId, bank]);
 
   useEffect(() => {
     void load();
@@ -311,7 +345,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
   return (
     <section className="card">
       <h2 className="border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
-        Generated records{' '}
+        {bank} records{' '}
         <span className="font-normal text-[var(--color-muted)]">({records.length})</span>
       </h2>
 
@@ -321,7 +355,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
         <ErrorState title="Records unavailable" message={error} onRetry={load} />
       ) : records.length === 0 ? (
         <p className="px-5 py-8 text-center text-sm text-[var(--color-muted)]">
-          No records generated yet.
+          No {bank} records generated yet.
         </p>
       ) : (
         <div className="table-wrap">
@@ -334,7 +368,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
                     {item.label}
                   </th>
                 ))}
-                <th scope="col">Attachment</th>
+                {!isIdbi && <th scope="col">Attachment</th>}
                 <th scope="col" className="col-actions text-right">
                   Actions
                 </th>
@@ -367,6 +401,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
                         </button>
                       </td>
                     ))}
+                  {!isIdbi && (
                   <td>
                     {record.attachmentName ? (
                       // A plain anchor: the browser fetches it with the
@@ -382,6 +417,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
                       <span className="text-[var(--color-muted)]">—</span>
                     )}
                   </td>
+                  )}
                   <td className="col-actions">
                     <div className="flex items-center justify-end gap-1">
                       {isAdmin && (
@@ -399,11 +435,11 @@ export function RecordsTable({ studentId }: { studentId: string }) {
                         size="sm"
                         onClick={() => void openPdfDialog(record.id, true)}
                       >
-                        Download Dummy PDF
+                        {isIdbi ? 'Download sample PDF' : 'Download Dummy PDF'}
                       </Button>
                       {/* The clean statement is an administrator's to give:
                           the owner only sees it once it has been released. */}
-                      {isAdmin || record.downloadReleasedAt ? (
+                      {isIdbi ? null : isAdmin || record.downloadReleasedAt ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -417,7 +453,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
                           Download PDF statement
                         </span>
                       )}
-                      {isAdmin && (
+                      {isAdmin && !isIdbi && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -618,7 +654,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
         )}
         {account && (
           <div className="grid max-h-[60vh] grid-cols-1 gap-x-8 gap-y-3 overflow-auto sm:grid-cols-2">
-            {accountColumns(account.values).map((column, index) => (
+            {accountColumns(account.values, bank).map((column, index) => (
               <dl key={index} className="space-y-3">
                 {column.map(([key, label]) => (
                   <div key={key}>
@@ -659,6 +695,7 @@ export function RecordsTable({ studentId }: { studentId: string }) {
           transactions={pdfFor.record.statement.transactions}
           defaultPassword={pdfFor.record.statement.accountInfo.password}
           dummy={pdfFor.dummy}
+          sample={isIdbi}
           onClose={() => setPdfFor(null)}
         />
       )}

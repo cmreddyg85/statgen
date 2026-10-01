@@ -122,10 +122,16 @@ export const BANKS: Bank[] = [
 export const branchesFor = (bankCode: string): Branch[] =>
   BANKS.find((bank) => bank.code === bankCode)?.branches ?? [];
 
-/** The narration previewed under Salary credit text. */
+/**
+ * The salary narration for the record's statement format, previewed under
+ * Salary credit text and sent as each company's `narration`.
+ */
 export const salaryNarration = (
   ifsc: string,
   bankCode: string,
   creditText: string,
+  format: "SBI" | "IDBI" = "SBI",
 ): string =>
-  `DEP TFR NEFT-${ifsc || "IFSC"}*${bankCode || "BANK"}-{{TraNum}}-${creditText || "{{ShortMonth}} Salary Credited"}`;
+  format === "IDBI"
+    ? `NEFT-${bankCode || "BANK"}N{{TraNum}}-${creditText || "{{ShortMonth}} Salary Credited"}`
+    : `DEP TFR NEFT-${ifsc || "IFSC"}*${bankCode || "BANK"}-{{TraNum}}-${creditText || "{{ShortMonth}} Salary Credited"}`;

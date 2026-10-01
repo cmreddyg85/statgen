@@ -5,6 +5,8 @@
  * is valid and what JSON it produces.
  */
 
+import { salaryNarration } from './banks.ts';
+
 export interface HikeInput {
   id: string;
   date: string;
@@ -65,7 +67,11 @@ export const emptyForm = (): GenerateRecordInput => ({
 const isMoney = (value: string): boolean => /^\d+(\.\d{1,2})?$/.test(value.trim());
 const money = (value: string): number => Number(value.trim());
 
-export function validate(form: GenerateRecordInput): Errors {
+/** IDBI-format records run on mock data, so they take no uploaded page. */
+export function validate(
+  form: GenerateRecordInput,
+  { requireDocument = true }: { requireDocument?: boolean } = {},
+): Errors {
   const errors: Errors = {};
 
   if (form.companies.length === 0) {
@@ -80,7 +86,7 @@ export function validate(form: GenerateRecordInput): Errors {
   }
 
   // The generator reads the account block off the statement's first page.
-  if (!form.documentName) {
+  if (requireDocument && !form.documentName) {
     errors.document = 'Bank statement first page (PDF) is required.';
   }
 
@@ -160,7 +166,7 @@ export function validate(form: GenerateRecordInput): Errors {
 }
 
 /** The payload the Generate button prints. */
-export function toPayload(form: GenerateRecordInput) {
+export function toPayload(form: GenerateRecordInput, format: 'SBI' | 'IDBI' = 'SBI') {
   return {
     salaryDay: Number(form.salaryDay),
     nextWorkingDay: form.nextWorkingDay,
@@ -175,7 +181,7 @@ export function toPayload(form: GenerateRecordInput) {
       bank: company.bank,
       ifsc: company.ifsc,
       salaryCreditText: company.salaryCreditText.trim(),
-      narration: `DEP TFR NEFT-${company.ifsc}*${company.bank}-{{TraNum}}-${company.salaryCreditText.trim()}`,
+      narration: salaryNarration(company.ifsc, company.bank, company.salaryCreditText.trim(), format),
       hikes: company.hikes.map((hike) => ({
         date: hike.date,
         salary: Number(hike.salary),

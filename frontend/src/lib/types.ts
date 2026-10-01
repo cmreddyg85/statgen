@@ -49,10 +49,32 @@ export interface SbiStatement {
   invalidDates: unknown[];
 }
 
+/** One row of an IDBI-format statement, as that module emits it. */
+export interface IdbiTransaction {
+  /** `dd/mm/yyyy hh:mm:ss` */
+  date: string;
+  details: string;
+  type: 'Cr' | 'Dr';
+  amount: string;
+  balance: string;
+  isSalary?: boolean;
+}
+
+export interface IdbiStatement {
+  accountInfo: Record<string, string>;
+  salaryTrans: string[];
+  transactions: IdbiTransaction[];
+  invalidDates: unknown[];
+}
+
+/** The statement format a record was generated for. */
+export type RecordBank = 'SBI' | 'IDBI';
+
 /** A generated statement as listed on a student's page. */
 export interface StudentRecordSummary {
   id: string;
   studentId: string;
+  bank: RecordBank;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;
@@ -93,7 +115,7 @@ export interface ActiveSession {
 export interface StudentRecordEntry extends StudentRecordSummary {
   input: Record<string, unknown>;
   extract: Record<string, unknown>;
-  statement: SbiStatement;
+  statement: SbiStatement | IdbiStatement;
 }
 
 /** Where a standalone SBI report's payload came from. */
@@ -102,6 +124,7 @@ export type SbiReportSource = 'extract' | 'transactions';
 /** A report as listed on the SBI screen. */
 export interface SbiReportSummary {
   id: string;
+  bank: RecordBank;
   source: SbiReportSource;
   customerName: string | null;
   accountNumber: string | null;
@@ -116,7 +139,7 @@ export interface SbiReportSummary {
 /** The same report with the pasted payload and what was built from it. */
 export interface SbiReportEntry extends SbiReportSummary {
   input: unknown;
-  statement: SbiStatement;
+  statement: SbiStatement | IdbiStatement;
 }
 
 export interface SessionInfo {

@@ -1,8 +1,15 @@
 import { recordAudit } from './audit.service.js';
 import * as reports from '../repositories/sbi-report.repository.js';
+import { generateIdbiTransactions } from '../idbi/generate.js';
+import { mockIdbiAccountInfo } from '../idbi/mock.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
-import { renderStatement, type StatementPayload } from '../sbi/statement-render.js';
+import {
+  renderIdbiStatement,
+  renderStatement,
+  type StatementPayload,
+} from '../sbi/statement-render.js';
 import type {
+  RecordBank,
   RequestActor,
   SbiReportEntry,
   SbiReportSource,
@@ -12,9 +19,13 @@ import { badRequest, conflict, notFound } from '../utils/errors.js';
 import type { RenderOptions } from '../sbi/statement-render.js';
 
 /**
- * Standalone statements, built from a payload pasted on the SBI screen
- * instead of from a student's form. Administrators only — the routes enforce
- * the role.
+ * Standalone statements, built from a payload pasted on the SBI or IDBI
+ * screen instead of from a student's form. Administrators only — the routes
+ * enforce the role. Each screen only sees its own bank's reports.
+ *
+ * IDBI reports run on mock data: whatever account block is pasted, the
+ * report gets a synthetic one (keeping only the PDF password), and its PDF is
+ * always the SAMPLE-marked layout.
  */
 
 function parseInput(input: unknown): Record<string, unknown> {
@@ -39,7 +50,20 @@ function safeParse(text: string): unknown {
  * Extract payloads still have to be run through the generator; a transactions
  * payload is already the finished statement and is taken as it stands.
  */
-function buildStatement(source: SbiReportSource, input: Record<string, unknown>) {
+function buildStatement(
+  bank: RecordBank,
+  source: SbiReportSource,
+  rawInput: Record<string, unknown>,
+) {
+  const input =
+    bank === 'IDBI'
+      ? {
+          ...rawInput,
+          accountInfo: mockIdbiAccountInfo(
+            String((rawInput.accountInfo as { password?: unknown } | undefined)?.password ?? ''),
+          ),
+        }
+      : rawInput;
   const accountInfo = input.accountInfo;
   if (!accountInfo || typeof accountInfo !== 'object') {
     throw badRequest('The payload needs an "accountInfo" object.');
@@ -61,7 +85,8 @@ function buildStatement(source: SbiReportSource, input: Record<string, unknown>)
     throw badRequest('An extract payload needs a non-empty "salaries" array.');
   }
 
-  const generated = generateSbiTransactions(input);
+  const generated =
+    bank === 'IDBI' ? generateIdbiTransactions(input) : generateSbiTransactions(input);
   if (generated.invalidDates.length > 0) {
     throw badRequest(
       `The generated transactions came out in the wrong order (${generated.invalidDates.length} date(s)).`,
@@ -78,19 +103,20 @@ function buildStatement(source: SbiReportSource, input: Record<string, unknown>)
   };
 }
 
-export async function list(): Promise<SbiReportSummary[]> {
-  return reports.listReports();
+export async function list(bank: RecordBank): Promise<SbiReportSummary[]> {
+  return reports.listReports(bank);
 }
 
-export async function getById(id: string): Promise<SbiReportEntry> {
+/** A report from the other bank's screen is treated as not found. */
+export async function getById(bank: RecordBank, id: string): Promise<SbiReportEntry> {
   const report = await reports.findById(id);
-  if (!report) throw notFound('Report not found.');
+  if (!report || report.bank !== bank) throw notFound('Report not found.');
   return report;
 }
 
 /** A finalized report is locked for everyone until it is unfinalized. */
-async function assertEditable(id: string): Promise<SbiReportEntry> {
-  const existing = await getById(id);
+async function assertEditable(bank: RecordBank, id: string): Promise<SbiReportEntry> {
+  const existing = await getById(bank, id);
   if (existing.finalizedAt) {
     throw conflict('This report is finalized. Unfinalize it before changing or deleting it.');
   }
@@ -98,17 +124,18 @@ async function assertEditable(id: string): Promise<SbiReportEntry> {
 }
 
 export async function create(
+  bank: RecordBank,
   source: SbiReportSource,
   rawInput: unknown,
   actor: RequestActor,
 ): Promise<SbiReportSummary> {
   const input = parseInput(rawInput);
-  const statement = buildStatement(source, input);
-  const created = await reports.insertReport({ source, input, statement }, actor.user.id);
+  const statement = buildStatement(bank, source, input);
+  const created = await reports.insertReport({ bank, source, input, statement }, actor.user.id);
 
   await recordAudit({
     userId: actor.user.id,
-    action: 'SBI_REPORT_CREATED',
+    action: `${bank}_REPORT_CREATED`,
     entityType: 'sbi_report',
     entityId: created.id,
     metadata: { source, transactions: created.transactionCount },
@@ -120,21 +147,22 @@ export async function create(
 }
 
 export async function update(
+  bank: RecordBank,
   id: string,
   source: SbiReportSource,
   rawInput: unknown,
   actor: RequestActor,
 ): Promise<SbiReportSummary> {
-  await assertEditable(id);
+  await assertEditable(bank, id);
   const input = parseInput(rawInput);
-  const statement = buildStatement(source, input);
+  const statement = buildStatement(bank, source, input);
 
   const updated = await reports.updateReport(id, { source, input, statement });
   if (!updated) throw notFound('Report not found.');
 
   await recordAudit({
     userId: actor.user.id,
-    action: 'SBI_REPORT_UPDATED',
+    action: `${bank}_REPORT_UPDATED`,
     entityType: 'sbi_report',
     entityId: id,
     metadata: { source },
@@ -145,14 +173,14 @@ export async function update(
   return updated;
 }
 
-export async function remove(id: string, actor: RequestActor): Promise<void> {
-  await assertEditable(id);
+export async function remove(bank: RecordBank, id: string, actor: RequestActor): Promise<void> {
+  await assertEditable(bank, id);
   const deleted = await reports.deleteReport(id);
   if (!deleted) throw notFound('Report not found.');
 
   await recordAudit({
     userId: actor.user.id,
-    action: 'SBI_REPORT_DELETED',
+    action: `${bank}_REPORT_DELETED`,
     entityType: 'sbi_report',
     entityId: id,
     ipAddress: actor.ipAddress,
@@ -161,16 +189,18 @@ export async function remove(id: string, actor: RequestActor): Promise<void> {
 }
 
 export async function setFinalized(
+  bank: RecordBank,
   id: string,
   finalized: boolean,
   actor: RequestActor,
 ): Promise<SbiReportSummary> {
+  await getById(bank, id);
   const updated = await reports.setFinalized(id, finalized ? actor.user.id : null);
   if (!updated) throw notFound('Report not found.');
 
   await recordAudit({
     userId: actor.user.id,
-    action: finalized ? 'SBI_REPORT_FINALIZED' : 'SBI_REPORT_UNFINALIZED',
+    action: finalized ? `${bank}_REPORT_FINALIZED` : `${bank}_REPORT_UNFINALIZED`,
     entityType: 'sbi_report',
     entityId: id,
     ipAddress: actor.ipAddress,
@@ -181,9 +211,11 @@ export async function setFinalized(
 }
 
 export async function statementPdf(
+  bank: RecordBank,
   id: string,
   options: RenderOptions,
 ): Promise<{ pdf: Buffer; fileName: string }> {
-  const report = await getById(id);
-  return renderStatement(report.statement as StatementPayload, options);
+  const report = await getById(bank, id);
+  const render = bank === 'IDBI' ? renderIdbiStatement : renderStatement;
+  return render(report.statement as StatementPayload, options);
 }

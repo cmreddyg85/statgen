@@ -1,8 +1,9 @@
 import { query } from '../db/pool.js';
-import type { SbiReportEntry, SbiReportSummary } from '../types.js';
+import type { RecordBank, SbiReportEntry, SbiReportSummary } from '../types.js';
 
 interface SummaryRow {
   id: string;
+  bank: RecordBank;
   source: string;
   customer_name: string | null;
   account_number: string | null;
@@ -23,8 +24,9 @@ interface ReportRow extends SummaryRow {
  * The list needs a few facts about each report, not the payload: those are
  * read straight out of the stored JSON.
  */
-const COLUMNS = `r.id, r.source,
-                 r.statement_json->'accountInfo'->>'customerName' AS customer_name,
+const COLUMNS = `r.id, r.bank, r.source,
+                 COALESCE(r.statement_json->'accountInfo'->>'customerName',
+                          r.statement_json->'accountInfo'->>'accountName') AS customer_name,
                  r.statement_json->'accountInfo'->>'accountNumber' AS account_number,
                  jsonb_array_length(r.statement_json->'transactions') AS transaction_count,
                  r.created_by, u.name AS created_by_name, r.created_at, r.updated_at,
@@ -35,6 +37,7 @@ const JOIN = 'LEFT JOIN users u ON u.id = r.created_by';
 function mapSummary(row: SummaryRow): SbiReportSummary {
   return {
     id: row.id,
+    bank: row.bank,
     source: row.source === 'transactions' ? 'transactions' : 'extract',
     customerName: row.customer_name,
     accountNumber: row.account_number,
@@ -47,9 +50,11 @@ function mapSummary(row: SummaryRow): SbiReportSummary {
   };
 }
 
-export async function listReports(): Promise<SbiReportSummary[]> {
+export async function listReports(bank: RecordBank): Promise<SbiReportSummary[]> {
   const { rows } = await query<SummaryRow>(
-    `SELECT ${COLUMNS} FROM sbi_reports r ${JOIN} ORDER BY r.created_at DESC`,
+    `SELECT ${COLUMNS} FROM sbi_reports r ${JOIN}
+      WHERE r.bank = $1 ORDER BY r.created_at DESC`,
+    [bank],
   );
   return rows.map(mapSummary);
 }
@@ -66,6 +71,8 @@ export async function findById(id: string): Promise<SbiReportEntry | null> {
 }
 
 export interface ReportPayload {
+  /** Fixed at creation; an update leaves it as it is. */
+  bank?: RecordBank;
   source: 'extract' | 'transactions';
   input: unknown;
   statement: unknown;
@@ -77,12 +84,18 @@ export async function insertReport(
 ): Promise<SbiReportSummary> {
   const { rows } = await query<SummaryRow>(
     `WITH inserted AS (
-       INSERT INTO sbi_reports (source, input_json, statement_json, created_by)
-       VALUES ($1, $2::jsonb, $3::jsonb, $4)
+       INSERT INTO sbi_reports (source, input_json, statement_json, created_by, bank)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4, $5)
        RETURNING *
      )
      SELECT ${COLUMNS} FROM inserted r ${JOIN}`,
-    [payload.source, JSON.stringify(payload.input), JSON.stringify(payload.statement), createdBy],
+    [
+      payload.source,
+      JSON.stringify(payload.input),
+      JSON.stringify(payload.statement),
+      createdBy,
+      payload.bank ?? 'SBI',
+    ],
   );
   return mapSummary(rows[0]!);
 }

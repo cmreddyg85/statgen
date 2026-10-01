@@ -88,6 +88,7 @@ interface SelectFieldProps {
   options: Array<{ value: string; label: string }>;
   className?: string;
   error?: string;
+  disabled?: boolean;
 }
 
 export function SelectField({
@@ -97,6 +98,7 @@ export function SelectField({
   options,
   className = '',
   error,
+  disabled,
 }: SelectFieldProps) {
   const id = useId();
   return (
@@ -110,7 +112,8 @@ export function SelectField({
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
-        className="field-input cursor-pointer"
+        disabled={disabled}
+        className="field-input cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

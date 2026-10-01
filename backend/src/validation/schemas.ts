@@ -162,6 +162,7 @@ export const recordParamsSchema = z.object({
  * whose transactions are out of order is never stored.
  */
 export const studentRecordSchema = z.object({
+  bank: z.enum(['SBI', 'IDBI']).default('SBI'),
   input: z.record(z.unknown()),
   extract: z.record(z.unknown()),
   statement: z

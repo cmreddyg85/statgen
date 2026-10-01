@@ -13,6 +13,7 @@ import { healthRouter } from './routes/health.routes.js';
 import { studentsRouter } from './routes/students.routes.js';
 import { usersRouter } from './routes/users.routes.js';
 import { sbiRouter } from './sbi/sbi.routes.js';
+import { idbiRouter } from './idbi/idbi.routes.js';
 import { logger } from './utils/logger.js';
 import { AppError } from './utils/errors.js';
 
@@ -68,6 +69,7 @@ export function createApp(): Express {
   // Statement payloads carry hundreds of transactions; the rest of the API
   // stays on the tight limit. Whichever parser runs first wins.
   app.use('/api/v1/sbi', express.json({ limit: '10mb' }));
+  app.use('/api/v1/idbi', express.json({ limit: '10mb' }));
   app.use('/api/v1/students/:id/records', express.json({ limit: '10mb' }));
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
@@ -81,6 +83,7 @@ export function createApp(): Express {
   api.use('/users', usersRouter);
   api.use('/students', studentsRouter);
   api.use('/sbi', sbiRouter);
+  api.use('/idbi', idbiRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

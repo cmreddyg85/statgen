@@ -17,6 +17,7 @@ import {
 } from '../validation/schemas.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { badRequest } from '../utils/errors.js';
+import type { RecordBank } from '../types.js';
 
 export const studentsRouter = Router();
 
@@ -129,6 +130,7 @@ studentsRouter.post(
  * produced for one run of the Generate-record form.
  */
 interface RecordBody {
+  bank: RecordBank;
   input: Record<string, unknown>;
   extract: Record<string, unknown>;
   statement: Record<string, unknown>;
@@ -207,8 +209,11 @@ studentsRouter.post(
   asyncHandler(async (req, res) => {
     const { id } = routeParams<{ id: string }>(req);
     const attachment = attachmentFrom(req);
-    // Every record keeps the page it was generated from.
-    if (!attachment) throw badRequest('The bank statement first page is required.');
+    // An SBI record keeps the page it was generated from; IDBI-format
+    // records run on mock data and have no upload.
+    if (!attachment && body<RecordBody>(req).bank === 'SBI') {
+      throw badRequest('The bank statement first page is required.');
+    }
 
     const record = await recordService.create(
       id,
@@ -237,10 +242,12 @@ studentsRouter.put(
   validate(studentRecordSchema),
   asyncHandler(async (req, res) => {
     const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    // The bank is fixed when the record is created.
+    const { bank: _bank, ...payload } = body<RecordBody>(req);
     const record = await recordService.update(
       id,
       recordId,
-      { ...body<RecordBody>(req), attachment: attachmentFrom(req) },
+      { ...payload, attachment: attachmentFrom(req) },
       getActor(req),
     );
     res.json({ record });

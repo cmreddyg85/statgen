@@ -14,15 +14,26 @@ import {
   type Errors,
   type GenerateRecordInput,
 } from '@/lib/generate-record';
-import type { SbiStatement, Student, StudentRecordEntry } from '@/lib/types';
+import type {
+  IdbiStatement,
+  RecordBank,
+  SbiStatement,
+  Student,
+  StudentRecordEntry,
+} from '@/lib/types';
 import { Button, LinkButton } from '@/components/Button';
-import { TextField } from '@/components/Field';
+import { SelectField, TextField } from '@/components/Field';
 import { PageHeader } from '@/components/PageHeader';
 import { Toggle } from '@/components/Toggle';
 import { useToast } from '@/components/Toast';
 import { CompanySection } from './CompanySection';
 
-type GenerateResponse = SbiStatement & { extracted: Record<string, unknown> };
+type GenerateResponse = (SbiStatement | IdbiStatement) & { extracted: Record<string, unknown> };
+
+const BANK_OPTIONS = [
+  { value: 'SBI', label: 'SBI' },
+  { value: 'IDBI', label: 'IDBI (mock data, sample PDF)' },
+];
 
 /**
  * Generate-record form.
@@ -34,6 +45,10 @@ type GenerateResponse = SbiStatement & { extracted: Record<string, unknown> };
  *
  * With `recordId` the same form edits a stored record: the account block was
  * already read off a PDF, so uploading one again is optional.
+ *
+ * The bank dropdown picks the statement format. SBI reads the uploaded first
+ * page; IDBI runs on a mock account block, so it has no upload. A record's
+ * bank is fixed once it is created.
  */
 export function GenerateRecordForm({
   studentId,
@@ -44,6 +59,8 @@ export function GenerateRecordForm({
 }) {
   const toast = useToast();
   const router = useRouter();
+  const [bank, setBank] = useState<RecordBank>('SBI');
+  const isIdbi = bank === 'IDBI';
   const [student, setStudent] = useState<Student | null>(null);
   const [form, setForm] = useState<GenerateRecordInput>(emptyForm);
   const [errors, setErrors] = useState<Errors>({});
@@ -64,8 +81,8 @@ export function GenerateRecordForm({
   // Once Generate has been pressed, errors follow edits instead of going
   // stale — a field the user has just fixed stops complaining.
   useEffect(() => {
-    if (submitted) setErrors(validate(form));
-  }, [form, submitted]);
+    if (submitted) setErrors(validate(form, { requireDocument: !isIdbi }));
+  }, [form, submitted, isIdbi]);
 
   useEffect(() => {
     api
@@ -82,6 +99,7 @@ export function GenerateRecordForm({
       .get<{ record: StudentRecordEntry }>(`/students/${studentId}/records/${recordId}`)
       .then(({ record }) => {
         if (!active) return;
+        setBank(record.bank);
         setForm(fromPayload(record.input));
         setStoredExtract(record.extract);
         setStoredAttachment(record.attachmentName);
@@ -131,6 +149,13 @@ export function GenerateRecordForm({
    * stored account block is reused and only the salary periods change. */
   const runGeneration = useCallback(
     async (payload: ReturnType<typeof toPayload> & { studentId: string }) => {
+      if (isIdbi) {
+        // Mock account block: a new one on create, the stored one on edit.
+        return api.post<GenerateResponse>('/idbi/generate', {
+          extract: storedExtract,
+          details: payload,
+        });
+      }
       if (file) {
         const body = new FormData();
         body.append('file', file);
@@ -143,11 +168,11 @@ export function GenerateRecordForm({
         details: payload,
       });
     },
-    [file, pdfPassword, storedExtract],
+    [file, isIdbi, pdfPassword, storedExtract],
   );
 
   const generate = async () => {
-    const found = validate(form);
+    const found = validate(form, { requireDocument: !isIdbi });
     setSubmitted(true);
     setErrors(found);
     setFormError(null);
@@ -157,13 +182,13 @@ export function GenerateRecordForm({
       return;
     }
 
-    if (!file && !storedExtract) {
+    if (!isIdbi && !file && !storedExtract) {
       setDocumentError('Upload the bank statement first page.');
       toast.error('Please correct the highlighted fields.');
       return;
     }
 
-    const payload = { studentId, student: student?.name ?? null, ...toPayload(form) };
+    const payload = { studentId, student: student?.name ?? null, ...toPayload(form, bank) };
 
     setBusy(true);
     try {
@@ -182,15 +207,16 @@ export function GenerateRecordForm({
       // multipart whenever one was picked. An edit that keeps its file sends
       // plain JSON and the stored PDF stays as it is.
       let record: FormData | Record<string, unknown>;
-      if (file) {
+      if (file && !isIdbi) {
         const body = new FormData();
+        body.append('bank', bank);
         body.append('file', file);
         body.append('input', JSON.stringify(payload));
         body.append('extract', JSON.stringify(extracted));
         body.append('statement', JSON.stringify(statement));
         record = body;
       } else {
-        record = { input: payload, extract: extracted, statement };
+        record = { bank, input: payload, extract: extracted, statement };
       }
 
       if (recordId) {
@@ -247,6 +273,27 @@ export function GenerateRecordForm({
 
       <div className="flex flex-col gap-4">
         <section className="card px-5 py-5">
+          <SelectField
+            label="Bank"
+            value={bank}
+            onChange={(value) => {
+              setBank(value as RecordBank);
+              setDocumentError(null);
+            }}
+            options={BANK_OPTIONS}
+            disabled={Boolean(recordId)}
+            className="max-w-xs"
+          />
+          <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+            {recordId
+              ? 'The bank is fixed once a record is created.'
+              : isIdbi
+                ? 'IDBI records use a mock account and give a SAMPLE-marked PDF only. No upload needed.'
+                : 'SBI records read the account from the uploaded statement first page.'}
+          </p>
+        </section>
+
+        <section className="card px-5 py-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-[15px] font-semibold">
               Companies{' '}
@@ -278,6 +325,7 @@ export function GenerateRecordForm({
                   )
                 }
                 removable={form.companies.length > 1}
+                format={bank}
               />
             ))}
           </div>
@@ -315,6 +363,7 @@ export function GenerateRecordForm({
               />
             </div>
 
+            {!isIdbi && (
             <div className="sm:col-span-2">
               <label className="field-label" htmlFor="bank-statement">
                 Bank statement first page
@@ -351,6 +400,9 @@ export function GenerateRecordForm({
               )}
             </div>
 
+            )}
+
+            {!isIdbi && (
             <div className="sm:col-span-2">
               <TextField
                 label="Uploaded statement password"
@@ -360,6 +412,7 @@ export function GenerateRecordForm({
                 hint="Only if the statement you are uploading is protected."
               />
             </div>
+            )}
 
             <div className="sm:col-span-2">
               <TextField

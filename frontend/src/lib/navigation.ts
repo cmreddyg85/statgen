@@ -11,9 +11,8 @@ export interface NavItem {
  * Single source of truth for navigation. Hiding a menu item is a usability
  * measure only — the API enforces the same roles independently.
  *
- * The business modules (SBI, IDBI, HDFC, PF, Gmail) are not destinations of
- * their own: a module is chosen from the dropdown on a student's Generate
- * screen.
+ * A student's records pick their bank from the dropdown on the Generate
+ * screen; the SBI and IDBI items are the admin-only standalone reports.
  */
 export const NAV_ITEMS: NavItem[] = [
   {
@@ -37,6 +36,12 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: "SBI",
     href: "/sbi",
+    roles: ["ADMIN"],
+    icon: "sbi",
+  },
+  {
+    label: "IDBI",
+    href: "/idbi",
     roles: ["ADMIN"],
     icon: "sbi",
   },

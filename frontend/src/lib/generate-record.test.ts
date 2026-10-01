@@ -151,3 +151,20 @@ test('payload carries the narration and numeric amounts', () => {
     'DEP TFR NEFT-HDFC0000032*HDFC-{{TraNum}}-SAL{{ShortMonth}}{{ShortYear}}',
   );
 });
+
+test('IDBI records need no uploaded page', () => {
+  const noDocument = form({ documentName: null });
+  assert.ok(validate(noDocument).document);
+  assert.equal(validate(noDocument, { requireDocument: false }).document, undefined);
+});
+
+test('the narration follows the statement format', () => {
+  assert.equal(
+    toPayload(form()).companies[0]!.narration,
+    'DEP TFR NEFT-HDFC0000032*HDFC-{{TraNum}}-SAL{{ShortMonth}}{{ShortYear}}',
+  );
+  assert.equal(
+    toPayload(form(), 'IDBI').companies[0]!.narration,
+    'NEFT-HDFCN{{TraNum}}-SAL{{ShortMonth}}{{ShortYear}}',
+  );
+});

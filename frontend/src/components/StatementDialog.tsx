@@ -2,14 +2,20 @@
 
 import { useState } from 'react';
 import { ApiError, apiBlob, downloadBlob } from '@/lib/api';
-import type { SbiStatement, SbiTransaction } from '@/lib/types';
+import type { IdbiStatement, IdbiTransaction, SbiStatement, SbiTransaction } from '@/lib/types';
 import { Button } from './Button';
 import { CheckboxField, TextField } from './Field';
 import { Modal } from './Modal';
 import { useToast } from './Toast';
 
-/** `23/09/2026` back to `2026-09-23`, so ranges compare as plain strings. */
-const transactionIso = (date: string) => {
+type StatementRow = SbiTransaction | IdbiTransaction;
+
+/**
+ * A row's day as `2026-09-23`, so ranges compare as plain strings. SBI rows
+ * carry `Date: 23/09/2026`; IDBI rows `date: 23/09/2026 18:37:07`.
+ */
+const transactionIso = (entry: StatementRow) => {
+  const date = ('Date' in entry ? entry.Date : entry.date).split(' ')[0]!;
   const [day, month, year] = date.split('/');
   return `${year}-${month}-${day}`;
 };
@@ -34,7 +40,7 @@ const slug = (value: string) =>
   value.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'statement';
 
 /** The data file the generator reads back: three consts, nothing else. */
-export function downloadStatementJson(statement: SbiStatement): void {
+export function downloadStatementJson(statement: SbiStatement | IdbiStatement): void {
   const { accountInfo, transactions, salaryTrans } = statement;
   const file = `const accountInfo = ${JSON.stringify(accountInfo, null, 2)};
 
@@ -50,7 +56,7 @@ module.exports = {
 `;
   downloadBlob(
     new Blob([file], { type: 'text/javascript' }),
-    `final-${slug(accountInfo.customerName ?? 'statement')}.js`,
+    `final-${slug(accountInfo.customerName ?? accountInfo.accountName ?? 'statement')}.js`,
   );
 }
 
@@ -64,19 +70,22 @@ export function StatementDialog({
   transactions,
   defaultPassword = '',
   dummy = false,
+  sample = false,
   onClose,
 }: {
   /** Where to POST the range; the server renders from its own copy. */
   endpoint: string;
-  transactions: SbiTransaction[];
+  transactions: StatementRow[];
   /** Prefills the password box, when the payload carries one. */
   defaultPassword?: string;
   /** The watermarked preview rather than the clean statement. */
   dummy?: boolean;
+  /** An IDBI-format record: always the SAMPLE-marked layout. */
+  sample?: boolean;
   onClose: () => void;
 }) {
   const toast = useToast();
-  const bounds = transactions.map((entry) => transactionIso(entry.Date)).sort();
+  const bounds = transactions.map(transactionIso).sort();
 
   const [protect, setProtect] = useState(false);
   // Prefilled from the record, but free to change: it protects this file only.
@@ -87,8 +96,8 @@ export function StatementDialog({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const inRange = (entry: SbiTransaction) => {
-    const iso = transactionIso(entry.Date);
+  const inRange = (entry: StatementRow) => {
+    const iso = transactionIso(entry);
     return iso >= fromDate && iso <= toDate;
   };
 
@@ -129,7 +138,11 @@ export function StatementDialog({
         protect,
         password: protect ? password.trim() : undefined,
       });
-      downloadBlob(blob, statementFileName());
+      const fileName = statementFileName();
+      downloadBlob(
+        blob,
+        sample ? fileName.replace('AccountStatement_', 'SampleStatement_') : fileName,
+      );
       toast.success('Statement downloaded.');
       onClose();
     } catch (caught) {
@@ -147,9 +160,13 @@ export function StatementDialog({
   return (
     <Modal
       open
-      title={dummy ? 'Download dummy PDF' : 'Download PDF statement'}
+      title={sample ? 'Download sample PDF' : dummy ? 'Download dummy PDF' : 'Download PDF statement'}
       description={`${count} transaction(s) in the selected range.${
-        dummy ? ' Every page is stamped DUMMY REPORT.' : ''
+        sample
+          ? ' Every page is marked SAMPLE – NOT A BANK DOCUMENT.'
+          : dummy
+            ? ' Every page is stamped DUMMY REPORT.'
+            : ''
       }`}
       onClose={onClose}
       footer={

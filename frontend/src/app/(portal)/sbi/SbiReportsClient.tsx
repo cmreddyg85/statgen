@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api, applyApiError } from '@/lib/api';
 import { formatDateTime, sortKeys } from '@/lib/format';
-import type { SbiReportEntry, SbiReportSource, SbiReportSummary } from '@/lib/types';
+import type { RecordBank, SbiReportEntry, SbiReportSource, SbiReportSummary } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { DateCell } from '@/components/DateCell';
@@ -43,9 +43,14 @@ const PANELS = [
  * Statements built straight from a pasted payload, with no student attached
  * (admin only). Either an extract, which is run through the generator, or a
  * ready-made account block and transaction list.
+ *
+ * Serves both the SBI and the IDBI screen. IDBI reports get a mock account
+ * block whatever is pasted, and only the SAMPLE-marked PDF.
  */
-export function SbiReportsClient() {
+export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
   const toast = useToast();
+  const base = `/${bank.toLowerCase()}/reports`;
+  const isIdbi = bank === 'IDBI';
   const [reports, setReports] = useState<SbiReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,14 +71,14 @@ export function SbiReportsClient() {
     setLoading(true);
     setError(null);
     try {
-      const { reports: rows } = await api.get<{ reports: SbiReportSummary[] }>('/sbi/reports');
+      const { reports: rows } = await api.get<{ reports: SbiReportSummary[] }>(base);
       setReports(rows);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Could not load reports.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [base]);
 
   useEffect(() => {
     void load();
@@ -86,7 +91,7 @@ export function SbiReportsClient() {
 
     setBusyId(id);
     try {
-      const { report } = await api.get<{ report: SbiReportEntry }>(`/sbi/reports/${id}`);
+      const { report } = await api.get<{ report: SbiReportEntry }>(`${base}/${id}`);
       cache.current.set(id, report);
       return report;
     } catch (caught) {
@@ -118,7 +123,7 @@ export function SbiReportsClient() {
   const setFinalized = async (report: SbiReportSummary, finalized: boolean) => {
     setBusyId(report.id);
     try {
-      await api.post(`/sbi/reports/${report.id}/${finalized ? 'finalize' : 'unfinalize'}`);
+      await api.post(`${base}/${report.id}/${finalized ? 'finalize' : 'unfinalize'}`);
       toast.success(finalized ? 'Report finalized.' : 'Report unfinalized.');
       await load();
     } catch (caught) {
@@ -132,7 +137,7 @@ export function SbiReportsClient() {
     if (!deleting) return;
     setDeleteBusy(true);
     try {
-      await api.delete(`/sbi/reports/${deleting.id}`);
+      await api.delete(`${base}/${deleting.id}`);
       cache.current.delete(deleting.id);
       toast.success('Report deleted.');
       setDeleting(null);
@@ -147,8 +152,12 @@ export function SbiReportsClient() {
   return (
     <>
       <PageHeader
-        title="SBI"
-        description="Statements built from a pasted payload, without a student record."
+        title={bank}
+        description={
+          isIdbi
+            ? 'Sample statements built from a pasted payload with a mock account block. PDFs are always marked SAMPLE.'
+            : 'Statements built from a pasted payload, without a student record.'
+        }
         actions={
           <Button
             onClick={() => {
@@ -253,15 +262,17 @@ export function SbiReportsClient() {
                           size="sm"
                           onClick={() => void open(report.id, 'dummy')}
                         >
-                          Download Dummy PDF
+                          {isIdbi ? 'Download sample PDF' : 'Download Dummy PDF'}
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void open(report.id, 'download')}
-                        >
-                          Download statement
-                        </Button>
+                        {!isIdbi && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => void open(report.id, 'download')}
+                          >
+                            Download statement
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -306,6 +317,8 @@ export function SbiReportsClient() {
 
       {formOpen && (
         <ReportForm
+          base={base}
+          isIdbi={isIdbi}
           report={editing}
           onClose={() => setFormOpen(false)}
           onSaved={(message) => {
@@ -335,10 +348,11 @@ export function SbiReportsClient() {
 
       {downloading && (
         <StatementDialog
-          endpoint={`/sbi/reports/${downloading.report.id}/statement-pdf`}
+          endpoint={`${base}/${downloading.report.id}/statement-pdf`}
           transactions={downloading.report.statement.transactions}
           defaultPassword={downloading.report.statement.accountInfo.password}
           dummy={downloading.dummy}
+          sample={isIdbi}
           onClose={() => setDownloading(null)}
         />
       )}
@@ -362,10 +376,14 @@ export function SbiReportsClient() {
 
 /** Create or edit: pick what the payload is, then paste it. */
 function ReportForm({
+  base,
+  isIdbi,
   report,
   onClose,
   onSaved,
 }: {
+  base: string;
+  isIdbi: boolean;
   report: SbiReportEntry | null;
   onClose: () => void;
   onSaved: (message: string) => void;
@@ -383,10 +401,10 @@ function ReportForm({
     try {
       const body = { source, input };
       if (report) {
-        await api.put(`/sbi/reports/${report.id}`, body);
+        await api.put(`${base}/${report.id}`, body);
         onSaved('Report updated.');
       } else {
-        await api.post('/sbi/reports', body);
+        await api.post(base, body);
         onSaved('Report created.');
       }
     } catch (error) {
@@ -443,6 +461,8 @@ function ReportForm({
           {source === 'extract'
             ? 'An extract payload: accountInfo plus the salary periods. Transactions are generated from it.'
             : 'A finished statement: accountInfo plus the transactions list, stored as pasted.'}
+          {isIdbi &&
+            ' IDBI reports always use a mock account block; only accountInfo.password is kept. Transactions use the IDBI shape: date, details, type, amount, balance.'}
         </p>
       </fieldset>
 

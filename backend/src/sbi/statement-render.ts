@@ -1,3 +1,4 @@
+import { createIdbiSamplePdf } from '../idbi/statement.js';
 import { createSbiStatementPdf } from './statement.js';
 import { badRequest } from '../utils/errors.js';
 
@@ -75,4 +76,40 @@ export async function renderStatement(
   );
 
   return { pdf, fileName: statementFileName() };
+}
+
+/**
+ * The IDBI-format sample: same range and password handling, but always the
+ * SAMPLE-marked layout — there is no clean copy to choose.
+ */
+export async function renderIdbiStatement(
+  statement: StatementPayload,
+  options: RenderOptions,
+): Promise<{ pdf: Buffer; fileName: string }> {
+  // IDBI rows carry `date` as `dd/mm/yyyy hh:mm:ss`.
+  const transactions = (statement.transactions ?? []).filter((entry) => {
+    const iso = transactionIso((entry.date ?? '').split(' ')[0]!);
+    return iso >= options.fromDate && iso <= options.toDate;
+  });
+
+  if (transactions.length === 0) {
+    throw badRequest('There are no transactions in that date range.');
+  }
+
+  const password = (options.password ?? statement.accountInfo?.password ?? '').trim();
+  if (options.protect && !password) {
+    throw badRequest('Enter a password to protect this PDF with.');
+  }
+
+  const pdf = await createIdbiSamplePdf(
+    {
+      ...statement.accountInfo,
+      password: options.protect ? password : '',
+      fromDate: slashDate(options.fromDate),
+      toDate: slashDate(options.toDate),
+    },
+    transactions,
+  );
+
+  return { pdf, fileName: `SampleStatement_${statementFileName().replace('AccountStatement_', '')}` };
 }

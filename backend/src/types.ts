@@ -20,17 +20,21 @@ export interface UserListItem extends UserRecord {
   activeSessions: number;
 }
 
+/** The statement format a record was generated for. */
+export type RecordBank = 'SBI' | 'IDBI';
+
 /** A generated statement listed on a student's page. */
 export interface StudentRecordSummary {
   id: string;
   studentId: string;
+  bank: RecordBank;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;
   updatedAt: string;
   /** File name of the statement page the record was generated from. */
   attachmentName: string | null;
-  /** Set on the one record per student that has been finalized. */
+  /** Set on the one record per student and bank that has been finalized. */
   finalizedAt: string | null;
   finalizedBy: string | null;
   finalizedByName: string | null;
@@ -55,6 +59,7 @@ export type SbiReportSource = 'extract' | 'transactions';
 /** A report as listed on the SBI screen. */
 export interface SbiReportSummary {
   id: string;
+  bank: RecordBank;
   source: SbiReportSource;
   customerName: string | null;
   accountNumber: string | null;

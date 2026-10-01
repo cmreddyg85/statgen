@@ -14,7 +14,9 @@ export function CompanySection({
   onChange,
   onRemove,
   removable,
+  format = "SBI",
 }: {
+  format?: "SBI" | "IDBI";
   company: CompanyInput;
   index: number;
   errors: Errors;
@@ -137,6 +139,7 @@ export function CompanySection({
               company.ifsc,
               company.bank,
               company.salaryCreditText,
+              format,
             )}
           </p>
         </div>
