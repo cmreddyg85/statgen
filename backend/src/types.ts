@@ -23,11 +23,14 @@ export interface UserListItem extends UserRecord {
 /** The statement format a record was generated for. */
 export type RecordBank = 'SBI' | 'IDBI';
 
+/** A student's records come in the bank formats plus emails. */
+export type StudentRecordBank = RecordBank | 'EMAIL';
+
 /** A generated statement listed on a student's page. */
 export interface StudentRecordSummary {
   id: string;
   studentId: string;
-  bank: RecordBank;
+  bank: StudentRecordBank;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;
@@ -41,6 +44,8 @@ export interface StudentRecordSummary {
   /** Set when an admin released the un-watermarked statement to the owner. */
   downloadReleasedAt: string | null;
   downloadReleasedBy: string | null;
+  /** The email form's input, listed with EMAIL records only. */
+  emailInput: unknown;
 }
 
 /** The same record with the three payloads the module produced. */

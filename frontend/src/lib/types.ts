@@ -72,11 +72,33 @@ export interface IdbiStatement {
 /** The statement format a record was generated for. */
 export type RecordBank = 'SBI' | 'IDBI';
 
+/** A student's records come in the bank formats plus emails. */
+export type StudentRecordBank = RecordBank | 'EMAIL';
+
+/** One email of an email record, as the form saves it. */
+export interface EmailInput {
+  subject: string;
+  date: string;
+  hour: number;
+  minute: number;
+  meridiem: 'AM' | 'PM';
+  /** 'all' adds the sender fields below to the output. */
+  mode?: 'date' | 'all';
+  senderName?: string;
+  senderEmail?: string;
+  mailedBy?: string;
+  signedBy?: string;
+  logo?: string;
+  fileId?: string | null;
+  attachmentName?: string | null;
+  replacements: { find: string; replace: string }[];
+}
+
 /** A generated statement as listed on a student's page. */
 export interface StudentRecordSummary {
   id: string;
   studentId: string;
-  bank: RecordBank;
+  bank: StudentRecordBank;
   createdBy: string;
   createdByName: string | null;
   createdAt: string;
@@ -90,6 +112,8 @@ export interface StudentRecordSummary {
   /** Set when an admin released the clean statement to the student's owner. */
   downloadReleasedAt: string | null;
   downloadReleasedBy: string | null;
+  /** The email form's input, on EMAIL records only. */
+  emailInput: { emails: EmailInput[] } | null;
 }
 
 /** What the server resolved about a machine when the session was created. */

@@ -19,6 +19,7 @@ import type {
   RecordBank,
   SbiStatement,
   Student,
+  StudentRecordBank,
   StudentRecordEntry,
 } from '@/lib/types';
 import { Button, LinkButton } from '@/components/Button';
@@ -27,12 +28,14 @@ import { PageHeader } from '@/components/PageHeader';
 import { Toggle } from '@/components/Toggle';
 import { useToast } from '@/components/Toast';
 import { CompanySection } from './CompanySection';
+import { EmailRecordForm } from './EmailRecordForm';
 
 type GenerateResponse = (SbiStatement | IdbiStatement) & { extracted: Record<string, unknown> };
 
 const BANK_OPTIONS = [
   { value: 'SBI', label: 'SBI' },
   { value: 'IDBI', label: 'IDBI (sample PDF)' },
+  { value: 'EMAIL', label: 'Email' },
 ];
 
 /**
@@ -58,7 +61,7 @@ export function GenerateRecordForm({
 }) {
   const toast = useToast();
   const router = useRouter();
-  const [bank, setBank] = useState<RecordBank>('SBI');
+  const [bank, setBank] = useState<StudentRecordBank>('SBI');
   const isIdbi = bank === 'IDBI';
   const [student, setStudent] = useState<Student | null>(null);
   const [form, setForm] = useState<GenerateRecordInput>(emptyForm);
@@ -99,6 +102,8 @@ export function GenerateRecordForm({
       .then(({ record }) => {
         if (!active) return;
         setBank(record.bank);
+        // The email form loads its own record.
+        if (record.bank === 'EMAIL') return;
         setForm(fromPayload(record.input));
         setStoredExtract(record.extract);
         setStoredAttachment(record.attachmentName);
@@ -193,7 +198,7 @@ export function GenerateRecordForm({
       return;
     }
 
-    const payload = { studentId, student: student?.name ?? null, ...toPayload(form, bank) };
+    const payload = { studentId, student: student?.name ?? null, ...toPayload(form, bank as RecordBank) };
 
     setBusy(true);
     try {
@@ -282,7 +287,7 @@ export function GenerateRecordForm({
             label="Bank"
             value={bank}
             onChange={(value) => {
-              setBank(value as RecordBank);
+              setBank(value as StudentRecordBank);
               setDocumentError(null);
             }}
             options={BANK_OPTIONS}
@@ -292,163 +297,171 @@ export function GenerateRecordForm({
           <p className="mt-1.5 text-xs text-[var(--color-muted)]">
             {recordId
               ? 'The bank is fixed once a record is created.'
-              : 'The uploaded statement first page supplies the account details. Generated PDFs are sample-marked.'}
+              : bank === 'EMAIL'
+                ? 'One section per email: subject, sent time, attachment and text replacements.'
+                : 'The uploaded statement first page supplies the account details. Generated PDFs are sample-marked.'}
           </p>
         </section>
 
-        <section className="card px-5 py-5">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-[15px] font-semibold">
-              Companies{' '}
-              <span className="font-normal text-[var(--color-muted)]">
-                ({form.companies.length})
-              </span>
-            </h2>
-            <Button
-              onClick={() => set('companies', [...form.companies, emptyCompany()])}
-            >
-              Add company
-            </Button>
-          </div>
-
-          {errors.companies && <p className="field-error mb-3">{errors.companies}</p>}
-
-          <div className="flex flex-col gap-4">
-            {form.companies.map((company, index) => (
-              <CompanySection
-                key={company.id}
-                company={company}
-                index={index}
-                errors={errors}
-                onChange={(next) => setCompany(index, next)}
-                onRemove={() =>
-                  set(
-                    'companies',
-                    form.companies.filter((_, i) => i !== index),
-                  )
-                }
-                removable={form.companies.length > 1}
-                format={bank}
-              />
-            ))}
-          </div>
-        </section>
-
-        <section className="card px-5 py-5">
-          <h2 className="mb-4 text-[15px] font-semibold">Payout and settlement</h2>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label="Salary day"
-              inputMode="numeric"
-              required
-              value={form.salaryDay}
-              onChange={(event) =>
-                set('salaryDay', event.target.value.replace(/[^\d]/g, ''))
-              }
-              error={errors.salaryDay}
-              hint="Day of the month, 1–31."
-            />
-            <div className="sm:pt-7">
-              <Toggle
-                label="Next working day"
-                hint="If salary day is in weekend then we have to move to next/previous working day"
-                checked={form.nextWorkingDay}
-                onChange={(checked) => set('nextWorkingDay', checked)}
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <Toggle
-                label="Is full and final settled amount credited"
-                checked={form.fullAndFinalCredited}
-                onChange={(checked) => set('fullAndFinalCredited', checked)}
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="field-label" htmlFor="bank-statement">
-                Bank statement first page
-              </label>
-              <input
-                ref={fileInput}
-                id="bank-statement"
-                type="file"
-                accept="application/pdf,.pdf"
-                onChange={onFileChange}
-                aria-invalid={documentError ? true : undefined}
-                className="block w-full cursor-pointer rounded-[8px] border border-[var(--color-line)] bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-[6px] file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-[var(--color-ink)] hover:file:bg-slate-200"
-              />
-              {documentError || (submitted && errors.document) ? (
-                <p className="field-error" role="alert">
-                  {documentError ?? errors.document}
-                </p>
-              ) : (
-                <p className="mt-1.5 text-xs text-[var(--color-muted)]">
-                  PDF only. Account details are extracted from the first pages.
-                  {form.documentName ? ` Selected: ${form.documentName}` : ''}
-                  {recordId && ' Leave empty to keep the stored statement page.'}
-                </p>
-              )}
-              {recordId && storedAttachment && (
-                <a
-                  href={`/api/v1/students/${studentId}/records/${recordId}/attachment`}
-                  download={storedAttachment}
-                  className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-primary)] hover:underline"
+        {bank === 'EMAIL' ? (
+          <EmailRecordForm studentId={studentId} recordId={recordId} />
+        ) : (
+          <>
+            <section className="card px-5 py-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-[15px] font-semibold">
+                  Companies{' '}
+                  <span className="font-normal text-[var(--color-muted)]">
+                    ({form.companies.length})
+                  </span>
+                </h2>
+                <Button
+                  onClick={() => set('companies', [...form.companies, emptyCompany()])}
                 >
-                  Download attached PDF
-                  <span className="text-[var(--color-muted)]">({storedAttachment})</span>
-                </a>
-              )}
+                  Add company
+                </Button>
+              </div>
+
+              {errors.companies && <p className="field-error mb-3">{errors.companies}</p>}
+
+              <div className="flex flex-col gap-4">
+                {form.companies.map((company, index) => (
+                  <CompanySection
+                    key={company.id}
+                    company={company}
+                    index={index}
+                    errors={errors}
+                    onChange={(next) => setCompany(index, next)}
+                    onRemove={() =>
+                      set(
+                        'companies',
+                        form.companies.filter((_, i) => i !== index),
+                      )
+                    }
+                    removable={form.companies.length > 1}
+                    format={bank}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section className="card px-5 py-5">
+              <h2 className="mb-4 text-[15px] font-semibold">Payout and settlement</h2>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <TextField
+                  label="Salary day"
+                  inputMode="numeric"
+                  required
+                  value={form.salaryDay}
+                  onChange={(event) =>
+                    set('salaryDay', event.target.value.replace(/[^\d]/g, ''))
+                  }
+                  error={errors.salaryDay}
+                  hint="Day of the month, 1–31."
+                />
+                <div className="sm:pt-7">
+                  <Toggle
+                    label="Next working day"
+                    hint="If salary day is in weekend then we have to move to next/previous working day"
+                    checked={form.nextWorkingDay}
+                    onChange={(checked) => set('nextWorkingDay', checked)}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <Toggle
+                    label="Is full and final settled amount credited"
+                    checked={form.fullAndFinalCredited}
+                    onChange={(checked) => set('fullAndFinalCredited', checked)}
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="field-label" htmlFor="bank-statement">
+                    Bank statement first page
+                  </label>
+                  <input
+                    ref={fileInput}
+                    id="bank-statement"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={onFileChange}
+                    aria-invalid={documentError ? true : undefined}
+                    className="block w-full cursor-pointer rounded-[8px] border border-[var(--color-line)] bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-[6px] file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-[var(--color-ink)] hover:file:bg-slate-200"
+                  />
+                  {documentError || (submitted && errors.document) ? (
+                    <p className="field-error" role="alert">
+                      {documentError ?? errors.document}
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+                      PDF only. Account details are extracted from the first pages.
+                      {form.documentName ? ` Selected: ${form.documentName}` : ''}
+                      {recordId && ' Leave empty to keep the stored statement page.'}
+                    </p>
+                  )}
+                  {recordId && storedAttachment && (
+                    <a
+                      href={`/api/v1/students/${studentId}/records/${recordId}/attachment`}
+                      download={storedAttachment}
+                      className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-primary)] hover:underline"
+                    >
+                      Download attached PDF
+                      <span className="text-[var(--color-muted)]">({storedAttachment})</span>
+                    </a>
+                  )}
+                </div>
+
+
+                <div className="sm:col-span-2">
+                  <TextField
+                    label="Uploaded statement password"
+                    type="password"
+                    value={pdfPassword}
+                    onChange={(event) => setPdfPassword(event.target.value)}
+                    hint="Only if the statement you are uploading is protected."
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <TextField
+                    label="Password for generated PDF"
+                    type="password"
+                    value={form.pdfPassword}
+                    onChange={(event) => set('pdfPassword', event.target.value)}
+                    hint="Optional. Offered when downloading a statement from this record."
+                  />
+                </div>
+              </div>
+            </section>
+
+            <div className="flex justify-end gap-3 pb-2">
+              <LinkButton href={`/students/${studentId}`} variant="secondary">
+                Cancel
+              </LinkButton>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setForm(emptyForm());
+                  setErrors({});
+                  setDocumentError(null);
+                  setFormError(null);
+                  setSubmitted(false);
+                  setFile(null);
+                  setPdfPassword('');
+                  setStoredExtract(null);
+                  if (fileInput.current) fileInput.current.value = '';
+                }}
+              >
+                Reset
+              </Button>
+              <Button onClick={generate} loading={busy || loading}>
+                {recordId ? 'Save changes' : 'Generate'}
+              </Button>
             </div>
-
-
-            <div className="sm:col-span-2">
-              <TextField
-                label="Uploaded statement password"
-                type="password"
-                value={pdfPassword}
-                onChange={(event) => setPdfPassword(event.target.value)}
-                hint="Only if the statement you are uploading is protected."
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <TextField
-                label="Password for generated PDF"
-                type="password"
-                value={form.pdfPassword}
-                onChange={(event) => set('pdfPassword', event.target.value)}
-                hint="Optional. Offered when downloading a statement from this record."
-              />
-            </div>
-          </div>
-        </section>
-
-        <div className="flex justify-end gap-3 pb-2">
-          <LinkButton href={`/students/${studentId}`} variant="secondary">
-            Cancel
-          </LinkButton>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setForm(emptyForm());
-              setErrors({});
-              setDocumentError(null);
-              setFormError(null);
-              setSubmitted(false);
-              setFile(null);
-              setPdfPassword('');
-              setStoredExtract(null);
-              if (fileInput.current) fileInput.current.value = '';
-            }}
-          >
-            Reset
-          </Button>
-          <Button onClick={generate} loading={busy || loading}>
-            {recordId ? 'Save changes' : 'Generate'}
-          </Button>
-        </div>
+          </>
+        )}
       </div>
     </>
   );

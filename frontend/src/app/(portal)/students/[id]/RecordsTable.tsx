@@ -712,7 +712,7 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
 }
 
 
-function PencilIcon() {
+export function PencilIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -725,7 +725,7 @@ function PencilIcon() {
   );
 }
 
-function TrashIcon() {
+export function TrashIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path

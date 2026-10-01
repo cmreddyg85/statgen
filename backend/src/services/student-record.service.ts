@@ -3,6 +3,8 @@ import * as studentService from './student.service.js';
 import * as records from '../repositories/student-record.repository.js';
 import * as students from '../repositories/student.repository.js';
 import type { RequestActor, StudentRecordEntry, StudentRecordSummary } from '../types.js';
+import { randomUUID } from 'node:crypto';
+import { buildEmailOutput, type EmailInput } from '../email/output.js';
 import { generateIdbiTransactions } from '../idbi/generate.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
 import {
@@ -78,7 +80,8 @@ export async function update(
   actor: RequestActor,
 ): Promise<StudentRecordSummary> {
   await studentService.getById(studentId, actor);
-  await assertEditable(studentId, id);
+  const existing = await assertEditable(studentId, id);
+  if (existing.bank === 'EMAIL') throw badRequest('Email records are saved through the email form.');
   const updated = await records.updateRecord(studentId, id, payload);
   if (!updated) throw notFound('Generated record not found.');
 
@@ -109,6 +112,7 @@ export async function updateExtract(
 ): Promise<StudentRecordSummary> {
   const existing = await getById(studentId, id, actor);
   await assertEditable(studentId, id);
+  if (existing.bank === 'EMAIL') throw badRequest('Email records have no extract.');
 
   if (!extract.accountInfo || typeof extract.accountInfo !== 'object') {
     throw badRequest('The extract needs an "accountInfo" object.');
@@ -165,7 +169,8 @@ export async function updateAccountInfo(
   actor: RequestActor,
 ): Promise<StudentRecordSummary> {
   await studentService.getById(studentId, actor);
-  await assertEditable(studentId, id);
+  const existing = await assertEditable(studentId, id);
+  if (existing.bank === 'EMAIL') throw badRequest('Email records have no account details.');
   const updated = await records.updateAccountInfo(studentId, id, accountInfo);
   if (!updated) throw notFound('Generated record not found.');
 
@@ -294,8 +299,8 @@ export async function setDownloadReleased(
 
   const existing = await records.findSummary(studentId, id);
   if (!existing) throw notFound('Generated record not found.');
-  if (released && existing.bank === 'IDBI') {
-    throw conflict('IDBI-format records only have the sample PDF; there is nothing to release.');
+  if (released && existing.bank !== 'SBI') {
+    throw conflict(`${existing.bank} records have no clean statement to release.`);
   }
   if (released && !existing.finalizedAt) {
     throw conflict('Finalize the record before releasing its statement.');
@@ -346,6 +351,7 @@ export async function statementPdf(
 
   const record = await records.findById(studentId, id);
   if (!record) throw notFound('Generated record not found.');
+  if (record.bank === 'EMAIL') throw badRequest('Email records have no statement.');
 
   // Always SAMPLE-marked, so anyone with access to the student may download it.
   if (record.bank === 'IDBI') {
@@ -361,4 +367,81 @@ export async function statementPdf(
   // Whatever password the dialog sent applies to this file only; nothing is
   // written back to the record.
   return renderStatement(record.statement as StatementPayload, options);
+}
+
+/**
+ * Creates (id null) or replaces an email record. `uploads[i]` is the new file
+ * for email i; without one, the email keeps the stored file it names, if that
+ * file belongs to this record.
+ */
+export async function saveEmail(
+  studentId: string,
+  id: string | null,
+  emails: EmailInput[],
+  uploads: Map<number, Omit<records.RecordFile, 'id'>>,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  await studentService.getById(studentId, actor);
+  let stored = new Set<string>();
+  if (id) {
+    const existing = await assertEditable(studentId, id);
+    if (existing.bank !== 'EMAIL') throw badRequest('This is not an email record.');
+    stored = new Set(await records.listFileIds(id));
+    // The previous names, so a kept file keeps its name in the input.
+    const previous = await records.findById(studentId, id);
+    const names = new Map(
+      ((previous?.input as { emails?: EmailInput[] })?.emails ?? []).map((e) => [e.fileId, e.attachmentName]),
+    );
+    emails = emails.map((e) => ({ ...e, attachmentName: e.fileId ? names.get(e.fileId) ?? null : null }));
+  }
+
+  const files: records.RecordFile[] = [];
+  const input = emails.map((email, index) => {
+    const upload = uploads.get(index);
+    if (upload) {
+      const file = { ...upload, id: randomUUID() };
+      files.push(file);
+      return { ...email, fileId: file.id, attachmentName: file.name };
+    }
+    return email.fileId && stored.has(email.fileId)
+      ? email
+      : { ...email, fileId: null, attachmentName: null };
+  });
+  const keep = input.flatMap((e) => (e.fileId && stored.has(e.fileId) ? [e.fileId] : []));
+
+  const savedId = await records.saveEmailRecord(
+    studentId,
+    id,
+    { emails: input },
+    buildEmailOutput(input),
+    files,
+    keep,
+    actor.user.id,
+  );
+  const saved = savedId && (await records.findSummary(studentId, savedId));
+  if (!saved) throw notFound('Generated record not found.');
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: id ? 'STUDENT_RECORD_UPDATED' : 'STUDENT_RECORD_CREATED',
+    entityType: 'student_record',
+    entityId: saved.id,
+    metadata: { studentId, bank: 'EMAIL' },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+
+  return saved;
+}
+
+export async function getFile(
+  studentId: string,
+  id: string,
+  fileId: string,
+  actor: RequestActor,
+): Promise<records.RecordAttachment> {
+  await studentService.getById(studentId, actor);
+  const file = await records.findFile(studentId, id, fileId);
+  if (!file) throw notFound('Attachment not found.');
+  return file;
 }

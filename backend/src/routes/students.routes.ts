@@ -6,6 +6,8 @@ import * as recordService from '../services/student-record.service.js';
 import * as studentService from '../services/student.service.js';
 import {
   createStudentSchema,
+  emailRecordSchema,
+  recordFileParamsSchema,
   listStudentsQuerySchema,
   recordAccountInfoSchema,
   recordExtractSchema,
@@ -18,6 +20,7 @@ import {
 import { asyncHandler } from '../utils/async-handler.js';
 import { badRequest } from '../utils/errors.js';
 import type { RecordBank } from '../types.js';
+import type { EmailInput } from '../email/output.js';
 
 export const studentsRouter = Router();
 
@@ -148,36 +151,40 @@ const recordUpload = multer({
  * as JSON text fields — so the file is stored with the data that came from
  * it. Plain JSON is still accepted for an update that keeps its file.
  */
-function parseRecordBody(req: Request, res: Response, next: NextFunction): void {
-  if (!req.is('multipart/form-data')) {
-    next();
-    return;
-  }
+const parseRecordBody = parseMultipart(recordUpload.single('file'));
 
-  recordUpload.single('file')(req, res, (error: unknown) => {
-    if (error) {
-      const code = (error as { code?: string }).code;
-      next(
-        code === 'LIMIT_FILE_SIZE'
-          ? badRequest('The statement PDF must be 25 MB or smaller.')
-          : error,
-      );
+function parseMultipart(upload: ReturnType<typeof recordUpload.any>) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.is('multipart/form-data')) {
+      next();
       return;
     }
 
-    for (const key of ['input', 'extract', 'statement'] as const) {
-      const raw = (req.body as Record<string, unknown>)?.[key];
-      if (typeof raw !== 'string') continue;
-      try {
-        (req.body as Record<string, unknown>)[key] = JSON.parse(raw);
-      } catch {
-        next(badRequest(`The ${key} payload is not valid JSON.`));
+    upload(req, res, (error: unknown) => {
+      if (error) {
+        const code = (error as { code?: string }).code;
+        next(
+          code === 'LIMIT_FILE_SIZE'
+            ? badRequest('Each file must be 25 MB or smaller.')
+            : error,
+        );
         return;
       }
-    }
 
-    next();
-  });
+      for (const key of ['input', 'extract', 'statement'] as const) {
+        const raw = (req.body as Record<string, unknown>)?.[key];
+        if (typeof raw !== 'string') continue;
+        try {
+          (req.body as Record<string, unknown>)[key] = JSON.parse(raw);
+        } catch {
+          next(badRequest(`The ${key} payload is not valid JSON.`));
+          return;
+        }
+      }
+
+      next();
+    });
+  };
 }
 
 /** The upload as the repository wants it, or null when none was sent. */
@@ -219,6 +226,64 @@ studentsRouter.post(
       getActor(req),
     );
     res.status(201).json({ record });
+  }),
+);
+
+/** Email records: the emails as JSON in `input`, each one's file as `file_<index>`. */
+const parseEmailBody = parseMultipart(recordUpload.any());
+
+function emailUploads(req: Request) {
+  const uploads = new Map<number, { buffer: Buffer; name: string; type: string }>();
+  for (const file of (req.files as Express.Multer.File[] | undefined) ?? []) {
+    const match = /^file_(\d+)$/.exec(file.fieldname);
+    if (!match) continue;
+    uploads.set(Number(match[1]), {
+      buffer: file.buffer,
+      name: file.originalname,
+      type: file.mimetype || 'application/octet-stream',
+    });
+  }
+  return uploads;
+}
+
+/** POST /api/v1/students/:id/email-records */
+studentsRouter.post(
+  '/:id/email-records',
+  validate(uuidParamSchema, 'params'),
+  parseEmailBody,
+  validate(emailRecordSchema),
+  asyncHandler(async (req, res) => {
+    const { id } = routeParams<{ id: string }>(req);
+    const { input } = body<{ input: { emails: EmailInput[] } }>(req);
+    const record = await recordService.saveEmail(id, null, input.emails, emailUploads(req), getActor(req));
+    res.status(201).json({ record });
+  }),
+);
+
+/** PUT /api/v1/students/:id/email-records/:recordId */
+studentsRouter.put(
+  '/:id/email-records/:recordId',
+  validate(recordParamsSchema, 'params'),
+  parseEmailBody,
+  validate(emailRecordSchema),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    const { input } = body<{ input: { emails: EmailInput[] } }>(req);
+    const record = await recordService.saveEmail(id, recordId, input.emails, emailUploads(req), getActor(req));
+    res.json({ record });
+  }),
+);
+
+/** GET /api/v1/students/:id/records/:recordId/files/:fileId — an email's attachment. */
+studentsRouter.get(
+  '/:id/records/:recordId/files/:fileId',
+  validate(recordFileParamsSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id, recordId, fileId } = routeParams<{ id: string; recordId: string; fileId: string }>(req);
+    const file = await recordService.getFile(id, recordId, fileId, getActor(req));
+    res.setHeader('Content-Type', file.type);
+    res.setHeader('Content-Disposition', `attachment; filename="${file.name.replace(/["\r\n]/g, '')}"`);
+    res.send(file.buffer);
   }),
 );
 

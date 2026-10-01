@@ -175,6 +175,45 @@ export const studentRecordSchema = z.object({
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a valid date');
 
+/** Body of the email record form; files travel beside it as file_<index>. */
+export const emailRecordSchema = z.object({
+  input: z.object({
+    emails: z
+      .array(
+        z.object({
+          subject: z.string().trim().min(1, 'Enter the subject').max(1000),
+          date: isoDate,
+          hour: z.coerce.number().int().min(1).max(12),
+          minute: z.coerce.number().int().min(0).max(59),
+          meridiem: z.enum(['AM', 'PM']),
+          mode: z.enum(['date', 'all']).default('date'),
+          senderName: z.string().trim().max(500).optional(),
+          senderEmail: z.string().trim().max(500).optional(),
+          mailedBy: z.string().trim().max(500).optional(),
+          signedBy: z.string().trim().max(500).optional(),
+          logo: z.string().trim().max(2000).optional(),
+          fileId: z.string().uuid().nullish(),
+          replacements: z
+            .array(
+              z.object({
+                find: z.string().min(1, 'Enter the old text').max(10_000),
+                replace: z.string().max(10_000),
+              }),
+            )
+            .max(200),
+        }),
+      )
+      .min(1, 'Add at least one email')
+      .max(50),
+  }),
+});
+
+export const recordFileParamsSchema = z.object({
+  id: z.string().uuid('Invalid identifier'),
+  recordId: z.string().uuid('Invalid record identifier'),
+  fileId: z.string().uuid('Invalid file identifier'),
+});
+
 /** Body of the SBI report form: a pasted payload and what it holds. */
 export const sbiReportSchema = z.object({
   source: z.enum(['extract', 'transactions']),

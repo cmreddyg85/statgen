@@ -9,6 +9,7 @@ import { Badge, StatusDot } from '@/components/Badge';
 import { LinkButton } from '@/components/Button';
 import { PageHeader } from '@/components/PageHeader';
 import { ErrorState, LoadingState } from '@/components/States';
+import { EmailRecordsTable } from './EmailRecordsTable';
 import { RecordsTable } from './RecordsTable';
 
 /**
@@ -123,6 +124,7 @@ export function StudentDetail({ studentId }: { studentId: string }) {
 
         <RecordsTable studentId={student.id} bank="SBI" />
         <RecordsTable studentId={student.id} bank="IDBI" />
+        <EmailRecordsTable studentId={student.id} />
       </div>
     </>
   );

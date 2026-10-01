@@ -7,6 +7,7 @@ import {
   renderStatement,
   type StatementPayload,
 } from "../sbi/statement-render.js";
+import { inOutputOrder } from "../email/output.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { badRequest, notFound } from "../utils/errors.js";
 
@@ -46,6 +47,75 @@ publicRouter.get(
       accountInfo: row?.account_info ?? {},
       transactions: row?.transactions ?? [],
     });
+  }),
+);
+
+/**
+ * The live student's finalized email record as the output array; `[]` when
+ * there is none. Same keying and liveness rule as the bank details above.
+ * `fileUrl` points at /email-files on whichever host this was called on.
+ */
+publicRouter.get(
+  "/email-details/:code",
+  cors(),
+  apiRateLimiter,
+  asyncHandler(async (req, res) => {
+    const code = req.params.code ?? "";
+    if (!/^[1-9]\d{4}$/.test(code))
+      throw badRequest("Student id must be 5 digits.");
+
+    const { rows } = await query<{
+      output: Record<string, unknown>[] | null;
+      input: { emails: { fileId?: string | null }[] } | null;
+    }>(
+      `SELECT r.statement_json AS output, r.input_json AS input
+         FROM students s
+         LEFT JOIN student_records r
+           ON r.student_id = s.id AND r.bank = 'EMAIL' AND r.finalized_at IS NOT NULL
+        WHERE s.student_code = $1 AND s.live AND s.archived_at IS NULL`,
+      [code],
+    );
+    if (rows.length === 0) throw notFound("Student is not live.");
+    const base = `${req.protocol}://${req.get("x-forwarded-host") ?? req.get("host")}/api/email-files/`;
+    const files = rows[0]?.input?.emails ?? [];
+    res.json(
+      (rows[0]?.output ?? []).map((item, i) => ({
+        ...inOutputOrder(item),
+        fileUrl: files[i]?.fileId ? base + files[i]!.fileId : null,
+      })),
+    );
+  }),
+);
+
+/**
+ * An email's attachment, by the id in its fileUrl. Served only while the
+ * record is finalized and its student live, like everything else here.
+ */
+publicRouter.get(
+  "/email-files/:fileId",
+  cors({ exposedHeaders: ["Content-Disposition"] }),
+  apiRateLimiter,
+  asyncHandler(async (req, res) => {
+    const fileId = req.params.fileId ?? "";
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fileId))
+      throw notFound("File not found.");
+
+    const { rows } = await query<{ data: Buffer; name: string; type: string }>(
+      `SELECT f.data, f.name, f.type
+         FROM student_record_files f
+         JOIN student_records r ON r.id = f.record_id AND r.finalized_at IS NOT NULL
+         JOIN students s ON s.id = r.student_id AND s.live AND s.archived_at IS NULL
+        WHERE f.id = $1`,
+      [fileId],
+    );
+    const file = rows[0];
+    if (!file) throw notFound("File not found.");
+    res.setHeader("Content-Type", file.type);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${file.name.replace(/["\r\n]/g, "")}"`,
+    );
+    res.send(file.data);
   }),
 );
 
