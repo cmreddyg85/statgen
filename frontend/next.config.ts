@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
       { source: '/api/v1/:path*', destination: `${apiOrigin}/api/v1/:path*` },
       { source: '/api/sbi-details/:code', destination: `${apiOrigin}/api/sbi-details/:code` },
       { source: '/api/idbi-details/:code', destination: `${apiOrigin}/api/idbi-details/:code` },
+      { source: '/api/sbi-download/:code', destination: `${apiOrigin}/api/sbi-download/:code` },
+      { source: '/api/idbi-download/:code', destination: `${apiOrigin}/api/idbi-download/:code` },
     ];
   },
   async headers() {
