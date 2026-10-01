@@ -10,6 +10,8 @@ import { apiRateLimiter } from './middleware/rate-limit.js';
 import { requestContext } from './middleware/request-context.js';
 import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
+import { publicRouter } from './routes/public.routes.js';
+import { liveRouter } from './routes/live.routes.js';
 import { studentsRouter } from './routes/students.routes.js';
 import { usersRouter } from './routes/users.routes.js';
 import { sbiRouter } from './sbi/sbi.routes.js';
@@ -44,6 +46,10 @@ export function createApp(): Express {
         err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info',
     }),
   );
+
+  // Public, any-origin endpoints; mounted before the allowlist CORS below,
+  // which would otherwise reject foreign origins.
+  app.use('/api', publicRouter);
 
   /**
    * Production is same-origin (Next.js reverse-proxies /api), so CORS is only
@@ -84,6 +90,7 @@ export function createApp(): Express {
   api.use('/students', studentsRouter);
   api.use('/sbi', sbiRouter);
   api.use('/idbi', idbiRouter);
+  api.use('/live', liveRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

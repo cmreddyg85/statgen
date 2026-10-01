@@ -86,6 +86,8 @@ export interface SessionRecord {
 
 export interface StudentRecord {
   id: string;
+  /** Five-digit public id, assigned by the database. */
+  studentCode: string;
   name: string;
   mobileNumber: string;
   offerCompany: string | null;

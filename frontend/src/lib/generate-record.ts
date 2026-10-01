@@ -67,7 +67,7 @@ export const emptyForm = (): GenerateRecordInput => ({
 const isMoney = (value: string): boolean => /^\d+(\.\d{1,2})?$/.test(value.trim());
 const money = (value: string): number => Number(value.trim());
 
-/** IDBI-format records run on mock data, so they take no uploaded page. */
+/** Both supported bank formats require an uploaded statement page. */
 export function validate(
   form: GenerateRecordInput,
   { requireDocument = true }: { requireDocument?: boolean } = {},

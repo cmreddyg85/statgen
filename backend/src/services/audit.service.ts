@@ -37,6 +37,7 @@ export type AuditAction =
   | 'IDBI_REPORT_DELETED'
   | 'IDBI_REPORT_FINALIZED'
   | 'IDBI_REPORT_UNFINALIZED'
+  | 'LIVE_STUDENTS_UPDATED'
   | 'AUTHORIZATION_FAILURE';
 
 export interface AuditEntry {

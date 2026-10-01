@@ -15,7 +15,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
   async rewrites() {
-    return [{ source: '/api/v1/:path*', destination: `${apiOrigin}/api/v1/:path*` }];
+    return [
+      { source: '/api/v1/:path*', destination: `${apiOrigin}/api/v1/:path*` },
+      { source: '/api/sbi-details/:code', destination: `${apiOrigin}/api/sbi-details/:code` },
+      { source: '/api/idbi-details/:code', destination: `${apiOrigin}/api/idbi-details/:code` },
+    ];
   },
   async headers() {
     return [

@@ -209,9 +209,7 @@ studentsRouter.post(
   asyncHandler(async (req, res) => {
     const { id } = routeParams<{ id: string }>(req);
     const attachment = attachmentFrom(req);
-    // An SBI record keeps the page it was generated from; IDBI-format
-    // records run on mock data and have no upload.
-    if (!attachment && body<RecordBody>(req).bank === 'SBI') {
+    if (!attachment) {
       throw badRequest('The bank statement first page is required.');
     }
 

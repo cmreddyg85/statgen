@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateIdbiTransactions } from '../src/idbi/generate.js';
-import { buildIdbiExtract, mockIdbiAccountInfo } from '../src/idbi/mock.js';
+import { buildSalaryPeriods } from '../src/sbi/salary-periods.js';
 
 const details = {
   salaryDay: 5,
@@ -20,25 +20,26 @@ const details = {
   ],
 };
 
-describe('IDBI mock pipeline', () => {
-  it('uses a synthetic account block and carries the PDF password', () => {
-    const extract = buildIdbiExtract(details);
-    expect(extract.accountInfo.accountName).toBe('SAMPLE ACCOUNT HOLDER');
-    expect(extract.accountInfo.ifsCode).toBe('TEST0000000');
-    expect(extract.accountInfo.password).toBe('pw');
-    expect(extract.salaries.length).toBeGreaterThan(0);
-  });
+const extract = {
+  accountInfo: {
+    accountName: 'Student Account',
+    accountNumber: '0000000000000000',
+    ifsCode: 'IBKL0000000',
+    password: 'pw',
+  },
+  numberOfCreditsTransactions: [1, 3],
+  numberOfDebitsTransactions: [15, 20],
+  balanceBeforeFromDate: 5000,
+  balanceAfterToDate: 453,
+  salaryDay: 5,
+  nextWorkingDay: false,
+  salaries: buildSalaryPeriods(details),
+};
 
-  it('keeps the stored account block when a record is edited', () => {
-    const previous = { ...buildIdbiExtract(details), balanceAfterToDate: 999 };
-    const next = buildIdbiExtract({ ...details, pdfPassword: 'new' }, previous);
-    expect(next.accountInfo.accountNumber).toBe(previous.accountInfo.accountNumber);
-    expect(next.accountInfo.password).toBe('new');
-    expect(next.balanceAfterToDate).toBe(999);
-  });
+describe('IDBI transaction generation', () => {
 
   it('generates ordered rows with salary credits, ending on the target balance', () => {
-    const result = generateIdbiTransactions(buildIdbiExtract(details));
+    const result = generateIdbiTransactions(extract);
     const { transactions } = result;
 
     expect(result.invalidDates).toEqual([]);
@@ -59,16 +60,13 @@ describe('IDBI mock pipeline', () => {
   });
 
   it('accepts balances given as text, as an edited extract carries them', () => {
-    const extract = {
-      ...buildIdbiExtract(details),
+    const updatedExtract = {
+      ...extract,
       balanceBeforeFromDate: '5000',
       balanceAfterToDate: '1200.50',
     };
-    const { transactions } = generateIdbiTransactions(extract);
+    const { transactions } = generateIdbiTransactions(updatedExtract);
     expect(transactions.at(-1)!.balance).toBe('1200.50');
   });
 
-  it('gives each mock account its own number', () => {
-    expect(mockIdbiAccountInfo().accountNumber).not.toBe(mockIdbiAccountInfo().accountNumber);
-  });
 });

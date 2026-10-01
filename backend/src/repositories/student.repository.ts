@@ -3,6 +3,7 @@ import type { Paginated, StudentRecord } from '../types.js';
 
 interface StudentRow {
   id: string;
+  student_code: string;
   name: string;
   mobile_number: string;
   offer_company: string | null;
@@ -17,6 +18,7 @@ interface StudentRow {
 function mapStudentRow(row: StudentRow): StudentRecord {
   return {
     id: row.id,
+    studentCode: row.student_code,
     name: row.name,
     mobileNumber: row.mobile_number,
     offerCompany: row.offer_company,
@@ -30,7 +32,7 @@ function mapStudentRow(row: StudentRow): StudentRecord {
 }
 
 const SELECT_STUDENT = `
-  SELECT s.id, s.name, s.mobile_number, s.offer_company, s.referred_by,
+  SELECT s.id, s.student_code, s.name, s.mobile_number, s.offer_company, s.referred_by,
          s.created_by, cu.name AS created_by_name,
          s.created_at, s.updated_at, s.archived_at
     FROM students s
@@ -38,6 +40,11 @@ const SELECT_STUDENT = `
 `;
 
 /** Archived students are returned too; visibility is decided by the service. */
+export async function findByCode(code: string): Promise<StudentRecord | null> {
+  const { rows } = await query<StudentRow>(`${SELECT_STUDENT} WHERE s.student_code = $1`, [code]);
+  return rows[0] ? mapStudentRow(rows[0]) : null;
+}
+
 export async function findById(id: string): Promise<StudentRecord | null> {
   const { rows } = await query<StudentRow>(`${SELECT_STUDENT} WHERE s.id = $1`, [id]);
   return rows[0] ? mapStudentRow(rows[0]) : null;
@@ -70,7 +77,7 @@ export async function listStudents(
   if (options.search) {
     params.push(`%${options.search}%`);
     conditions.push(
-      `(s.name ILIKE $${params.length} OR s.mobile_number ILIKE $${params.length} OR s.offer_company ILIKE $${params.length})`,
+      `(s.name ILIKE $${params.length} OR s.mobile_number ILIKE $${params.length} OR s.offer_company ILIKE $${params.length} OR s.student_code ILIKE $${params.length})`,
     );
   }
   if (options.createdBy) {
@@ -205,6 +212,11 @@ export async function getStudentStats(createdBy?: string): Promise<StudentStats>
 export async function deleteStudent(id: string): Promise<boolean> {
   const { rowCount } = await query('DELETE FROM students WHERE id = $1', [id]);
   return (rowCount ?? 0) > 0;
+}
+
+/** Takes the student off the public API (the Live screen's selection). */
+export async function clearLive(id: string): Promise<void> {
+  await query('UPDATE students SET live = false WHERE id = $1 AND live', [id]);
 }
 
 export async function countRecords(studentId: string): Promise<number> {

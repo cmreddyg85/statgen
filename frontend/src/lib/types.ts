@@ -19,6 +19,8 @@ export interface UserListItem extends User {
 
 export interface Student {
   id: string;
+  /** Five-digit public id. */
+  studentCode: string;
   name: string;
   mobileNumber: string;
   offerCompany: string | null;

@@ -74,7 +74,7 @@ const ACCOUNT_RIGHT: [string, string][] = [
   ['micrCode', 'MICR Code'],
   ['nomineeName', 'Nominee Name'],
 ];
-/** The mock IDBI account block, in the same two-column arrangement. */
+/** The IDBI account block, in the same two-column arrangement. */
 const IDBI_ACCOUNT_LEFT: [string, string][] = [
   ['accountName', 'Account Holder Name'],
   ['addressLine1', 'Address Line 1'],
@@ -127,8 +127,8 @@ function accountColumns(
  */
 export function RecordsTable({ studentId, bank }: { studentId: string; bank: RecordBank }) {
   const toast = useToast();
-  // IDBI-format records run on mock data: no uploaded page, and only the
-  // SAMPLE-marked PDF, so there is no clean download to release.
+  // IDBI-format records have a SAMPLE-marked PDF only, so there is no clean
+  // download to release.
   const isIdbi = bank === 'IDBI';
   // The raw payloads are an administrator's view; a user sees only the
   // account details and salary transactions, and otherwise the downloads.
@@ -368,7 +368,7 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
                     {item.label}
                   </th>
                 ))}
-                {!isIdbi && <th scope="col">Attachment</th>}
+                <th scope="col">Attachment</th>
                 <th scope="col" className="col-actions text-right">
                   Actions
                 </th>
@@ -401,7 +401,6 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
                         </button>
                       </td>
                     ))}
-                  {!isIdbi && (
                   <td>
                     {record.attachmentName ? (
                       // A plain anchor: the browser fetches it with the
@@ -417,7 +416,6 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
                       <span className="text-[var(--color-muted)]">—</span>
                     )}
                   </td>
-                  )}
                   <td className="col-actions">
                     <div className="flex items-center justify-end gap-1">
                       {isAdmin && (
@@ -435,7 +433,7 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
                         size="sm"
                         onClick={() => void openPdfDialog(record.id, true)}
                       >
-                        {isIdbi ? 'Download sample PDF' : 'Download Dummy PDF'}
+                        Download dummy PDF
                       </Button>
                       {/* The clean statement is an administrator's to give:
                           the owner only sees it once it has been released. */}

@@ -1,7 +1,6 @@
 import { recordAudit } from './audit.service.js';
 import * as reports from '../repositories/sbi-report.repository.js';
 import { generateIdbiTransactions } from '../idbi/generate.js';
-import { mockIdbiAccountInfo } from '../idbi/mock.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
 import {
   renderIdbiStatement,
@@ -23,9 +22,8 @@ import type { RenderOptions } from '../sbi/statement-render.js';
  * screen instead of from a student's form. Administrators only — the routes
  * enforce the role. Each screen only sees its own bank's reports.
  *
- * IDBI reports run on mock data: whatever account block is pasted, the
- * report gets a synthetic one (keeping only the PDF password), and its PDF is
- * always the SAMPLE-marked layout.
+ * IDBI reports use the supplied account data and always render with the
+ * SAMPLE-marked layout.
  */
 
 function parseInput(input: unknown): Record<string, unknown> {
@@ -55,15 +53,7 @@ function buildStatement(
   source: SbiReportSource,
   rawInput: Record<string, unknown>,
 ) {
-  const input =
-    bank === 'IDBI'
-      ? {
-          ...rawInput,
-          accountInfo: mockIdbiAccountInfo(
-            String((rawInput.accountInfo as { password?: unknown } | undefined)?.password ?? ''),
-          ),
-        }
-      : rawInput;
+  const input = rawInput;
   const accountInfo = input.accountInfo;
   if (!accountInfo || typeof accountInfo !== 'object') {
     throw badRequest('The payload needs an "accountInfo" object.');

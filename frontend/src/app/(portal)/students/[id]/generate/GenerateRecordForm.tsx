@@ -32,7 +32,7 @@ type GenerateResponse = (SbiStatement | IdbiStatement) & { extracted: Record<str
 
 const BANK_OPTIONS = [
   { value: 'SBI', label: 'SBI' },
-  { value: 'IDBI', label: 'IDBI (mock data, sample PDF)' },
+  { value: 'IDBI', label: 'IDBI (sample PDF)' },
 ];
 
 /**
@@ -46,9 +46,8 @@ const BANK_OPTIONS = [
  * With `recordId` the same form edits a stored record: the account block was
  * already read off a PDF, so uploading one again is optional.
  *
- * The bank dropdown picks the statement format. SBI reads the uploaded first
- * page; IDBI runs on a mock account block, so it has no upload. A record's
- * bank is fixed once it is created.
+ * The bank dropdown picks the statement format. Both formats read the
+ * uploaded statement first page. A record's bank is fixed once it is created.
  */
 export function GenerateRecordForm({
   studentId,
@@ -81,8 +80,8 @@ export function GenerateRecordForm({
   // Once Generate has been pressed, errors follow edits instead of going
   // stale — a field the user has just fixed stops complaining.
   useEffect(() => {
-    if (submitted) setErrors(validate(form, { requireDocument: !isIdbi }));
-  }, [form, submitted, isIdbi]);
+    if (submitted) setErrors(validate(form, { requireDocument: true }));
+  }, [form, submitted]);
 
   useEffect(() => {
     api
@@ -149,8 +148,14 @@ export function GenerateRecordForm({
    * stored account block is reused and only the salary periods change. */
   const runGeneration = useCallback(
     async (payload: ReturnType<typeof toPayload> & { studentId: string }) => {
+      if (isIdbi && file) {
+        const body = new FormData();
+        body.append('file', file);
+        body.append('details', JSON.stringify(payload));
+        if (pdfPassword) body.append('password', pdfPassword);
+        return api.post<GenerateResponse>('/idbi/extract-statement', body);
+      }
       if (isIdbi) {
-        // Mock account block: a new one on create, the stored one on edit.
         return api.post<GenerateResponse>('/idbi/generate', {
           extract: storedExtract,
           details: payload,
@@ -172,7 +177,7 @@ export function GenerateRecordForm({
   );
 
   const generate = async () => {
-    const found = validate(form, { requireDocument: !isIdbi });
+    const found = validate(form, { requireDocument: true });
     setSubmitted(true);
     setErrors(found);
     setFormError(null);
@@ -182,7 +187,7 @@ export function GenerateRecordForm({
       return;
     }
 
-    if (!isIdbi && !file && !storedExtract) {
+    if (!file && !storedExtract) {
       setDocumentError('Upload the bank statement first page.');
       toast.error('Please correct the highlighted fields.');
       return;
@@ -207,7 +212,7 @@ export function GenerateRecordForm({
       // multipart whenever one was picked. An edit that keeps its file sends
       // plain JSON and the stored PDF stays as it is.
       let record: FormData | Record<string, unknown>;
-      if (file && !isIdbi) {
+      if (file) {
         const body = new FormData();
         body.append('bank', bank);
         body.append('file', file);
@@ -287,9 +292,7 @@ export function GenerateRecordForm({
           <p className="mt-1.5 text-xs text-[var(--color-muted)]">
             {recordId
               ? 'The bank is fixed once a record is created.'
-              : isIdbi
-                ? 'IDBI records use a mock account and give a SAMPLE-marked PDF only. No upload needed.'
-                : 'SBI records read the account from the uploaded statement first page.'}
+              : 'The uploaded statement first page supplies the account details. Generated PDFs are sample-marked.'}
           </p>
         </section>
 
@@ -363,7 +366,6 @@ export function GenerateRecordForm({
               />
             </div>
 
-            {!isIdbi && (
             <div className="sm:col-span-2">
               <label className="field-label" htmlFor="bank-statement">
                 Bank statement first page
@@ -383,7 +385,7 @@ export function GenerateRecordForm({
                 </p>
               ) : (
                 <p className="mt-1.5 text-xs text-[var(--color-muted)]">
-                  PDF only, first page only.
+                  PDF only. Account details are extracted from the first pages.
                   {form.documentName ? ` Selected: ${form.documentName}` : ''}
                   {recordId && ' Leave empty to keep the stored statement page.'}
                 </p>
@@ -400,9 +402,7 @@ export function GenerateRecordForm({
               )}
             </div>
 
-            )}
 
-            {!isIdbi && (
             <div className="sm:col-span-2">
               <TextField
                 label="Uploaded statement password"
@@ -412,7 +412,6 @@ export function GenerateRecordForm({
                 hint="Only if the statement you are uploading is protected."
               />
             </div>
-            )}
 
             <div className="sm:col-span-2">
               <TextField

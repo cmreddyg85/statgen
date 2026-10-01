@@ -160,7 +160,7 @@ export function StudentsClient() {
           <div className="min-w-[220px] flex-1">
             <TextField
               label="Search"
-              placeholder="Name, mobile or company"
+              placeholder="ID, name, mobile or company"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
             />
@@ -247,6 +247,7 @@ export function StudentsClient() {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th scope="col">ID</th>
                     <th scope="col">Name</th>
                     <th scope="col">Mobile</th>
                     <th scope="col">Offer company</th>
@@ -261,6 +262,7 @@ export function StudentsClient() {
                 <tbody>
                   {data.items.map((student) => (
                     <tr key={student.id}>
+                      <td className="tabular-nums">{student.studentCode}</td>
                       <td className="font-medium">
                         <Link
                           href={`/students/${student.id}`}

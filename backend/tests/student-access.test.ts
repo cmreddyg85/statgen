@@ -22,6 +22,7 @@ function user(role: Role, id: string): UserRecord {
 function student(createdBy: string): StudentRecord {
   return {
     id: '00000000-0000-0000-0000-0000000000s1'.replace(/s/g, '5'),
+    studentCode: '12345',
     name: 'Asha Menon',
     mobileNumber: '9876543210',
     offerCompany: 'Acme Corp',

@@ -1,6 +1,7 @@
 import { recordAudit } from './audit.service.js';
 import * as studentService from './student.service.js';
 import * as records from '../repositories/student-record.repository.js';
+import * as students from '../repositories/student.repository.js';
 import type { RequestActor, StudentRecordEntry, StudentRecordSummary } from '../types.js';
 import { generateIdbiTransactions } from '../idbi/generate.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
@@ -263,6 +264,8 @@ export async function unfinalize(
 
   const updated = await records.setFinalized(studentId, id, null);
   if (!updated) throw notFound('Generated record not found.');
+  // An unfinalized statement is no longer the agreed one, so it goes off live.
+  await students.clearLive(studentId);
 
   await recordAudit({
     userId: actor.user.id,
