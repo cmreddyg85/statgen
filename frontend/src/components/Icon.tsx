@@ -8,6 +8,8 @@ const PATHS: Record<NavItem['icon'], string> = {
     'M15 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-4A3.5 3.5 0 0 0 4 17.5V19m9.5-14a3 3 0 1 1 0 6m-4-3a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM20 19v-1.5a3.5 3.5 0 0 0-2.5-3.35',
   // A bank front: columns under a roof.
   sbi: 'M3 20h18M4 20v-9m4 9v-9m8 9v-9m4 9v-9M2.5 11 12 5l9.5 6',
+  // A banknote: a card with a coin in the middle.
+  payments: 'M3.5 7h17v10h-17zM12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM6.5 10v4m11-4v4',
   // A broadcast: a dot with waves either side.
   live: 'M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-3.5 2.5a5 5 0 0 1 0-7m7 0a5 5 0 0 1 0 7M5.6 18.4a9 9 0 0 1 0-12.8m12.8 0a9 9 0 0 1 0 12.8',
 };
@@ -42,6 +44,34 @@ export function EyeIcon() {
         strokeWidth="1.6"
       />
       <circle cx="12" cy="12" r="2.75" stroke="currentColor" strokeWidth="1.6" />
+    </svg>
+  );
+}
+
+export function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function PaperclipIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }

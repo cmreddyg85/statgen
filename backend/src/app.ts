@@ -11,7 +11,9 @@ import { requestContext } from './middleware/request-context.js';
 import { authRouter } from './routes/auth.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 import { publicRouter } from './routes/public.routes.js';
+import { dashboardRouter } from './routes/dashboard.routes.js';
 import { liveRouter } from './routes/live.routes.js';
+import { paymentsRouter } from './routes/payments.routes.js';
 import { studentsRouter } from './routes/students.routes.js';
 import { usersRouter } from './routes/users.routes.js';
 import { sbiRouter } from './sbi/sbi.routes.js';
@@ -91,6 +93,8 @@ export function createApp(): Express {
   api.use('/sbi', sbiRouter);
   api.use('/idbi', idbiRouter);
   api.use('/live', liveRouter);
+  api.use('/dashboard', dashboardRouter);
+  api.use('/payments', paymentsRouter);
   app.use('/api/v1', api);
 
   app.use(notFoundHandler);

@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getServerSession } from '@/lib/server-session';
-import { AdminDashboard } from './home/AdminDashboard';
-import { UserDashboard } from './home/UserDashboard';
+import { Dashboard } from './home/Dashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,5 +12,5 @@ export default async function HomePage() {
   if (!session) redirect('/login?reason=unauthenticated');
   const user = session.user;
 
-  return user.role === 'ADMIN' ? <AdminDashboard /> : <UserDashboard name={user.name} />;
+  return <Dashboard isAdmin={user.role === 'ADMIN'} name={user.name} />;
 }

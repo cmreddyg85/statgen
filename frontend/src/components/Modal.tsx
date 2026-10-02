@@ -29,6 +29,10 @@ export function Modal({
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  // Callers pass a fresh onClose each render; reading it through a ref keeps
+  // the effect below from re-running (and re-focusing) on every keystroke.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => setMounted(true), []);
 
@@ -46,12 +50,21 @@ export function Modal({
         ) ?? [],
       );
 
-    focusable()[0]?.focus();
+    // A form dialog starts in its first field; anything else on its first control.
+    (
+      panelRef.current?.querySelector<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
+      ) ?? focusable()[0]
+    )?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // With a dialog opened over another, only the top one (rendered last)
+      // answers Escape and Tab.
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      if (dialogs[dialogs.length - 1] !== panelRef.current) return;
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -76,7 +89,7 @@ export function Modal({
       document.body.style.overflow = overflow;
       previouslyFocused?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || !mounted) return null;
 

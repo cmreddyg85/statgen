@@ -208,19 +208,19 @@ export function UsersClient() {
                     const isSelf = user.id === currentUser.id;
                     return (
                       <tr key={user.id}>
-                        <td className="font-medium">
+                        <td data-label="Name" className="font-medium">
                           {user.name}
                           {isSelf && (
                             <span className="ml-2 text-xs text-[var(--color-muted)]">(you)</span>
                           )}
                         </td>
-                        <td className="text-[var(--color-muted)]">{user.username}</td>
-                        <td>
+                        <td data-label="Username" className="text-[var(--color-muted)]">{user.username}</td>
+                        <td data-label="Role">
                           <Badge tone={user.role === 'ADMIN' ? 'info' : 'neutral'}>
                             {user.role === 'ADMIN' ? 'Administrator' : 'User'}
                           </Badge>
                         </td>
-                        <td>
+                        <td data-label="Status">
                           {user.active ? (
                             <Badge tone="success">
                               <StatusDot tone="success" />
@@ -233,13 +233,13 @@ export function UsersClient() {
                             </Badge>
                           )}
                         </td>
-                        <td>
+                        <td data-label="Created">
                           <DateCell value={user.createdAt} />
                         </td>
-                        <td>
+                        <td data-label="Last login">
                           <DateCell value={user.lastLoginAt} />
                         </td>
-                        <td className="whitespace-nowrap">
+                        <td data-label="Sessions" className="whitespace-nowrap">
                           {user.activeSessions > 0 ? (
                             <button
                               type="button"

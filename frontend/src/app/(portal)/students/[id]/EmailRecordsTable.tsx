@@ -4,14 +4,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import type { EmailInput, StudentRecordEntry, StudentRecordSummary } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
-import { Button, LinkButton } from '@/components/Button';
+import { Button } from '@/components/Button';
 import { DateCell } from '@/components/DateCell';
-import { EyeIcon } from '@/components/Icon';
+import { EyeIcon, PaperclipIcon } from '@/components/Icon';
 import { ConfirmDialog, Modal } from '@/components/Modal';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
 import { useSession } from '@/lib/session-context';
-import { PencilIcon, TrashIcon } from './RecordsTable';
+import { RowEditDelete } from './RecordsTable';
 
 // Mirrors OUTPUT_KEYS in backend/src/email/output.ts.
 const OUTPUT_KEYS = [
@@ -19,9 +19,6 @@ const OUTPUT_KEYS = [
   'senderName', 'senderEmail', 'mailedBy', 'signedBy', 'logo',
   'textReplacements',
 ];
-
-const LINK =
-  'inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60';
 
 /**
  * The student's email records. Subjects and attachments come with the list;
@@ -114,9 +111,11 @@ export function EmailRecordsTable({ studentId }: { studentId: string }) {
 
   return (
     <section className="card">
-      <h2 className="border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
-        Email records{' '}
-        <span className="font-normal text-[var(--color-muted)]">({records.length})</span>
+      <h2 className="flex items-center gap-2 border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
+        Email records
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 tabular-nums">
+          {records.length}
+        </span>
       </h2>
 
       {loading ? (
@@ -133,10 +132,9 @@ export function EmailRecordsTable({ studentId }: { studentId: string }) {
             <thead>
               <tr>
                 <th scope="col">Generated</th>
-                <th scope="col">Subject</th>
-                <th scope="col">Input details</th>
-                {isAdmin && <th scope="col">Output JSON</th>}
-                <th scope="col">Attachment</th>
+                <th scope="col">Subjects</th>
+                <th scope="col">Details</th>
+                <th scope="col">Attachments</th>
                 <th scope="col" className="col-actions text-right">
                   Actions
                 </th>
@@ -148,70 +146,74 @@ export function EmailRecordsTable({ studentId }: { studentId: string }) {
                 const files = emails.filter((email) => email.fileId);
                 return (
                   <tr key={record.id}>
-                    <td>
-                      <DateCell value={record.createdAt} />
-                      {record.finalizedAt && (
-                        <span className="mt-1 inline-block">
+                    <td data-label="Generated">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <DateCell value={record.createdAt} />
+                        {record.finalizedAt && (
                           <Badge tone="success">
                             <StatusDot tone="success" />
                             Finalized
                           </Badge>
-                        </span>
-                      )}
+                        )}
+                      </div>
                     </td>
-                    <td>
-                      <ul className="space-y-0.5 text-[13px]">
+                    <td data-label="Subjects">
+                      <ol className="min-w-[160px] max-w-[320px] space-y-1">
                         {emails.map((email, i) => (
-                          <li key={i}>{email.subject}</li>
+                          <li key={i} className="flex gap-2">
+                            <span className="tabular-nums text-[var(--color-muted)]">{i + 1}.</span>
+                            <span className="font-medium break-words">{email.subject}</span>
+                          </li>
                         ))}
-                      </ul>
+                      </ol>
                     </td>
-                    <td>
-                      <button
-                        type="button"
-                        className={LINK}
-                        onClick={() => setPanel({ title: 'Input details', json: record.emailInput })}
-                      >
-                        Input details
-                        <EyeIcon />
-                      </button>
-                    </td>
-                    {isAdmin && (
-                      <td>
+                    <td data-label="Details">
+                      <div className="chip-row">
                         <button
                           type="button"
-                          className={LINK}
-                          disabled={busyId === record.id}
-                          onClick={() => void openOutput(record.id, emails)}
+                          className="chip"
+                          onClick={() => setPanel({ title: 'Input details', json: record.emailInput })}
                         >
-                          Output JSON
                           <EyeIcon />
+                          Input
                         </button>
-                      </td>
-                    )}
-                    <td>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            className="chip"
+                            disabled={busyId === record.id}
+                            onClick={() => void openOutput(record.id, emails)}
+                          >
+                            <EyeIcon />
+                            Output JSON
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td data-label="Attachments">
                       {files.length === 0 ? (
                         <span className="text-[var(--color-muted)]">—</span>
                       ) : (
-                        <ul className="space-y-0.5">
+                        <div className="chip-row">
                           {files.map((email) => (
-                            <li key={email.fileId}>
-                              <a
-                                href={`/api/v1/students/${studentId}/records/${record.id}/files/${email.fileId}`}
-                                download={email.attachmentName ?? undefined}
-                                className={LINK}
-                              >
-                                {email.attachmentName}
-                              </a>
-                            </li>
+                            <a
+                              key={email.fileId}
+                              href={`/api/v1/students/${studentId}/records/${record.id}/files/${email.fileId}`}
+                              download={email.attachmentName ?? undefined}
+                              className="chip max-w-[220px]"
+                              title={email.attachmentName ?? undefined}
+                            >
+                              <PaperclipIcon />
+                              <span className="truncate">{email.attachmentName}</span>
+                            </a>
                           ))}
-                        </ul>
+                        </div>
                       )}
                     </td>
                     <td className="col-actions">
                       <div className="flex items-center justify-end gap-1">
                         <Button
-                          variant="ghost"
+                          variant={record.finalizedAt ? 'secondary' : 'primary'}
                           size="sm"
                           className="w-[104px]"
                           loading={busyId === record.id}
@@ -219,48 +221,11 @@ export function EmailRecordsTable({ studentId }: { studentId: string }) {
                         >
                           {record.finalizedAt ? 'Unfinalize' : 'Finalize'}
                         </Button>
-                        {record.finalizedAt ? (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled
-                              aria-label="Edit record"
-                              title="Unfinalize this record to edit it"
-                            >
-                              <PencilIcon />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled
-                              aria-label="Delete record"
-                              title="Unfinalize this record to delete it"
-                            >
-                              <TrashIcon />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <LinkButton
-                              href={`/students/${studentId}/generate?record=${record.id}`}
-                              variant="ghost"
-                              size="sm"
-                              aria-label="Edit record"
-                            >
-                              <PencilIcon />
-                            </LinkButton>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label="Delete record"
-                              className="text-[var(--color-danger)] hover:bg-red-50"
-                              onClick={() => setDeleting(record)}
-                            >
-                              <TrashIcon />
-                            </Button>
-                          </>
-                        )}
+                        <RowEditDelete
+                          locked={Boolean(record.finalizedAt)}
+                          editHref={`/students/${studentId}/generate?record=${record.id}`}
+                          onDelete={() => setDeleting(record)}
+                        />
                       </div>
                     </td>
                   </tr>

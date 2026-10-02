@@ -7,6 +7,7 @@ import * as studentService from '../services/student.service.js';
 import {
   createStudentSchema,
   emailRecordSchema,
+  matchTransactionsSchema,
   recordFileParamsSchema,
   listStudentsQuerySchema,
   recordAccountInfoSchema,
@@ -17,6 +18,7 @@ import {
   updateStudentSchema,
   uuidParamSchema,
 } from '../validation/schemas.js';
+import { query } from '../db/pool.js';
 import { asyncHandler } from '../utils/async-handler.js';
 import { badRequest } from '../utils/errors.js';
 import type { RecordBank } from '../types.js';
@@ -114,6 +116,26 @@ studentsRouter.delete(
     const { id } = routeParams<{ id: string }>(req);
     await studentService.remove(id, getActor(req));
     res.json({ success: true });
+  }),
+);
+
+/**
+ * GET /api/v1/students/:id/delete-impact — administrators only: what a
+ * permanent delete takes with it, for the confirmation dialog.
+ */
+studentsRouter.get(
+  '/:id/delete-impact',
+  requireRole('ADMIN'),
+  validate(uuidParamSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id } = routeParams<{ id: string }>(req);
+    await studentService.getById(id, getActor(req));
+    const { rows } = await query<{ records: number; payments: number }>(
+      `SELECT (SELECT count(*)::int FROM student_records WHERE student_id = $1) AS records,
+              (SELECT count(*)::int FROM payments WHERE student_id = $1) AS payments`,
+      [id],
+    );
+    res.json(rows[0]);
   }),
 );
 
@@ -364,6 +386,21 @@ studentsRouter.get(
       `attachment; filename="${attachment.name.replace(/["\r\n]/g, '')}"`,
     );
     res.send(attachment.buffer);
+  }),
+);
+
+/**
+ * POST /api/v1/students/:id/records/:recordId/match-transactions — appends
+ * one or two rows so a finalized statement closes on `amount`.
+ */
+studentsRouter.post(
+  '/:id/records/:recordId/match-transactions',
+  validate(recordParamsSchema, 'params'),
+  validate(matchTransactionsSchema),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    const { amount } = body<{ amount: number }>(req);
+    res.json(await recordService.matchClosingBalance(id, recordId, amount, getActor(req)));
   }),
 );
 

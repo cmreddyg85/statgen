@@ -208,6 +208,11 @@ export const emailRecordSchema = z.object({
   }),
 });
 
+/** Body of "match transactions": the closing balance the statement should end on. */
+export const matchTransactionsSchema = z.object({
+  amount: z.coerce.number().finite().min(0, 'The amount cannot be negative').max(1e12),
+});
+
 export const recordFileParamsSchema = z.object({
   id: z.string().uuid('Invalid identifier'),
   recordId: z.string().uuid('Invalid record identifier'),

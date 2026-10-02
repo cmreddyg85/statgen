@@ -4,6 +4,7 @@ import { getActor, requireAdmin, requireAuth } from '../middleware/auth.js';
 import { body, routeParams, validate } from '../middleware/validate.js';
 import * as reportService from '../services/sbi-report.service.js';
 import {
+  matchTransactionsSchema,
   sbiReportSchema,
   statementPdfSchema,
   uuidParamSchema,
@@ -229,6 +230,18 @@ export function reportsRouterFor(bank: RecordBank): Router {
       }),
     );
   }
+
+  /** POST /api/v1/sbi/reports/:id/match-transactions — tops a finalized report up to a closing balance. */
+  reportsRouter.post(
+    '/:id/match-transactions',
+    validate(uuidParamSchema, 'params'),
+    validate(matchTransactionsSchema),
+    asyncHandler(async (req, res) => {
+      const { id } = routeParams<{ id: string }>(req);
+      const { amount } = body<{ amount: number }>(req);
+      res.json(await reportService.matchClosingBalance(bank, id, amount, getActor(req)));
+    }),
+  );
 
   /** POST /api/v1/sbi/reports/:id/statement-pdf */
   reportsRouter.post(

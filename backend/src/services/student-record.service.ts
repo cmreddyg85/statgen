@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { buildEmailOutput, type EmailInput } from '../email/output.js';
 import { generateIdbiTransactions } from '../idbi/generate.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
+import { matchTransactions } from '../statement/match.js';
 import {
   renderIdbiStatement,
   renderStatement,
@@ -444,4 +445,41 @@ export async function getFile(
   const file = await records.findFile(studentId, id, fileId);
   if (!file) throw notFound('Attachment not found.');
   return file;
+}
+
+/**
+ * Appends one or two transactions so a finalized statement closes on
+ * `target`. The only change a finalized record allows: existing rows stay
+ * exactly as they are.
+ */
+export async function matchClosingBalance(
+  studentId: string,
+  id: string,
+  target: number,
+  actor: RequestActor,
+): Promise<{ added: unknown[]; transactions: unknown[] }> {
+  const record = await getById(studentId, id, actor);
+  if (record.bank === 'EMAIL') throw badRequest('Email records have no transactions.');
+  if (!record.finalizedAt) throw conflict('Finalize the record before matching its transactions.');
+
+  const statement = record.statement as { transactions?: unknown[] };
+  let result: { added: unknown[]; transactions: unknown[] };
+  try {
+    result = matchTransactions(record.bank, statement.transactions ?? [], target);
+  } catch (error) {
+    throw badRequest((error as Error).message);
+  }
+  if (result.added.length === 0) return result;
+
+  await records.updateTransactions(studentId, id, result.transactions);
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_UPDATED',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId, matchedClosingBalance: target, added: result.added.length },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+  return result;
 }

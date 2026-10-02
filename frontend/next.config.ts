@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   devIndicators: false,
+  // Extra hostnames allowed to load the dev server (e.g. the Mac's LAN IP for the Android app).
+  allowedDevOrigins: process.env.DEV_ORIGINS?.split(',') ?? [],
   async rewrites() {
     return [
       { source: '/api/v1/:path*', destination: `${apiOrigin}/api/v1/:path*` },

@@ -136,6 +136,17 @@ export async function setFinalized(
   return rows[0] ? mapSummary(rows[0]) : null;
 }
 
+/** Overwrites the statement's transactions and nothing else. */
+export async function updateTransactions(id: string, transactions: unknown[]): Promise<boolean> {
+  const { rowCount } = await query(
+    `UPDATE sbi_reports
+        SET statement_json = jsonb_set(statement_json, '{transactions}', $2::jsonb)
+      WHERE id = $1`,
+    [id, JSON.stringify(transactions)],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 export async function deleteReport(id: string): Promise<boolean> {
   const { rowCount } = await query('DELETE FROM sbi_reports WHERE id = $1', [id]);
   return (rowCount ?? 0) > 0;

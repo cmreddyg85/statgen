@@ -4,7 +4,7 @@ export interface NavItem {
   label: string;
   href: string;
   roles: Role[];
-  icon: "home" | "students" | "users" | "sbi" | "live";
+  icon: "home" | "students" | "users" | "sbi" | "payments" | "live";
 }
 
 /**
@@ -44,6 +44,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/idbi",
     roles: ["ADMIN"],
     icon: "sbi",
+  },
+  {
+    label: "Payments",
+    href: "/payments",
+    roles: ["ADMIN"],
+    icon: "payments",
   },
   {
     label: "Live",

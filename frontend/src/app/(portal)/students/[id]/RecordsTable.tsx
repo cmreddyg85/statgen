@@ -5,9 +5,10 @@ import { ApiError, api } from '@/lib/api';
 import type { RecordBank, StudentRecordEntry, StudentRecordSummary } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
 import { Button, LinkButton } from '@/components/Button';
+import { MatchTransactionsDialog } from '@/components/MatchTransactionsDialog';
 import { StatementDialog, downloadStatementJson } from '@/components/StatementDialog';
 import { DateCell } from '@/components/DateCell';
-import { EyeIcon } from '@/components/Icon';
+import { DownloadIcon, EyeIcon, PaperclipIcon } from '@/components/Icon';
 import { Modal, ConfirmDialog } from '@/components/Modal';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
@@ -15,23 +16,26 @@ import { useSession } from '@/lib/session-context';
 
 /** The JSON panels, in the order they appear as columns. */
 const PANELS = [
-  { key: 'input', label: 'Input details', pick: (r: StudentRecordEntry) => r.input },
-  { key: 'extract', label: 'Extract details', pick: (r: StudentRecordEntry) => r.extract },
+  { key: 'input', label: 'Input details', short: 'Input', pick: (r: StudentRecordEntry) => r.input },
+  { key: 'extract', label: 'Extract details', short: 'Extract', pick: (r: StudentRecordEntry) => r.extract },
   {
     key: 'account',
     label: 'Account details',
+    short: 'Account',
     pick: (r: StudentRecordEntry) => r.statement.accountInfo,
     forUsers: true,
   },
   {
     key: 'salary',
     label: 'Salary transactions',
+    short: 'Salary',
     pick: (r: StudentRecordEntry) => r.statement.salaryTrans,
     forUsers: true,
   },
   {
     key: 'transactions',
     label: 'Transactions',
+    short: 'Transactions',
     pick: (r: StudentRecordEntry) => r.statement.transactions,
   },
 ] as const;
@@ -143,7 +147,10 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
     json: unknown;
     /** Set on the one panel an administrator may correct: the extract. */
     editRecordId?: string;
+    /** Set on a finalized record's transactions: they may be topped up to a closing balance. */
+    matchRecordId?: string;
   } | null>(null);
+  const [matching, setMatching] = useState(false);
   // The extract being edited, as text, and why it was refused.
   const [draft, setDraft] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
@@ -223,7 +230,12 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
     }
     // A finalized record is locked, its extract included.
     const editable = isAdmin && key === 'extract' && !record.finalizedAt;
-    setPanel({ title: label, json: pick(record), editRecordId: editable ? id : undefined });
+    setPanel({
+      title: label,
+      json: pick(record),
+      editRecordId: editable ? id : undefined,
+      matchRecordId: key === 'transactions' && record.finalizedAt ? id : undefined,
+    });
   };
 
   const closePanel = () => {
@@ -344,9 +356,11 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
 
   return (
     <section className="card">
-      <h2 className="border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
-        {bank} records{' '}
-        <span className="font-normal text-[var(--color-muted)]">({records.length})</span>
+      <h2 className="flex items-center gap-2 border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
+        {bank} records
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 tabular-nums">
+          {records.length}
+        </span>
       </h2>
 
       {loading ? (
@@ -363,12 +377,9 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
             <thead>
               <tr>
                 <th scope="col">Generated</th>
-                {panels.map((item) => (
-                  <th key={item.key} scope="col">
-                    {item.label}
-                  </th>
-                ))}
+                <th scope="col">Details</th>
                 <th scope="col">Attachment</th>
+                <th scope="col">Downloads</th>
                 <th scope="col" className="col-actions text-right">
                   Actions
                 </th>
@@ -377,85 +388,93 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
             <tbody>
               {records.map((record) => (
                 <tr key={record.id}>
-                  <td>
-                    <DateCell value={record.createdAt} />
-                    {record.finalizedAt && (
-                      <span className="mt-1 inline-block">
+                  <td data-label="Generated">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <DateCell value={record.createdAt} />
+                      {record.finalizedAt && (
                         <Badge tone="success">
                           <StatusDot tone="success" />
                           Finalized
                         </Badge>
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </td>
-                  {panels.map((item) => (
-                      <td key={item.key}>
+                  <td data-label="Details">
+                    <div className="chip-row">
+                      {panels.map((item) => (
                         <button
+                          key={item.key}
                           type="button"
+                          className="chip"
+                          title={`View ${item.label.toLowerCase()}`}
                           onClick={() => void openPanel(record.id, item.key, item.label, item.pick)}
                           disabled={busyId === record.id}
-                          className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60"
                         >
-                          {item.label}
                           <EyeIcon />
+                          {item.short}
                         </button>
-                      </td>
-                    ))}
-                  <td>
+                      ))}
+                    </div>
+                  </td>
+                  <td data-label="Attachment">
                     {record.attachmentName ? (
                       // A plain anchor: the browser fetches it with the
                       // session cookie and saves it straight to disk.
                       <a
                         href={`/api/v1/students/${studentId}/records/${record.id}/attachment`}
                         download={record.attachmentName}
-                        className="whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline"
+                        className="chip max-w-[200px]"
+                        title={record.attachmentName}
                       >
-                        Download attached PDF
+                        <PaperclipIcon />
+                        <span className="truncate">Uploaded PDF</span>
                       </a>
                     ) : (
                       <span className="text-[var(--color-muted)]">—</span>
                     )}
                   </td>
-                  <td className="col-actions">
-                    <div className="flex items-center justify-end gap-1">
-                      {isAdmin && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void downloadJson(record.id)}
-                          loading={busyId === record.id}
-                        >
-                          Download JSON
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                  <td data-label="Downloads">
+                    <div className="chip-row">
+                      <button
+                        type="button"
+                        className="chip"
                         onClick={() => void openPdfDialog(record.id, true)}
                       >
-                        Download dummy PDF
-                      </Button>
+                        <DownloadIcon />
+                        {isIdbi ? 'Sample PDF' : 'Dummy PDF'}
+                      </button>
                       {/* The clean statement is an administrator's to give:
                           the owner only sees it once it has been released. */}
-                      {isIdbi ? null : isAdmin || record.downloadReleasedAt ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                      {!isIdbi && (isAdmin || record.downloadReleasedAt) && (
+                        <button
+                          type="button"
+                          className="chip"
                           onClick={() => void openPdfDialog(record.id, false)}
                         >
-                          Download PDF statement
-                        </Button>
-                      ) : (
-                        // Keeps the column lined up without offering anything.
-                        <span className="invisible px-3 text-[13px]" aria-hidden="true">
-                          Download PDF statement
-                        </span>
+                          <DownloadIcon />
+                          Statement
+                        </button>
                       )}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          className="chip"
+                          disabled={busyId === record.id}
+                          onClick={() => void downloadJson(record.id)}
+                        >
+                          <DownloadIcon />
+                          JSON
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="col-actions">
+                    <div className="flex items-center justify-end gap-1">
                       {isAdmin && !isIdbi && (
                         <Button
-                          variant="ghost"
+                          variant="secondary"
                           size="sm"
-                          className="w-[132px]"
+                          className="w-[124px]"
                           disabled={!record.finalizedAt}
                           title={
                             record.finalizedAt
@@ -470,9 +489,8 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
                           {record.downloadReleasedAt ? 'Hide download' : 'Show download'}
                         </Button>
                       )}
-
                       <Button
-                        variant="ghost"
+                        variant={record.finalizedAt ? 'secondary' : 'primary'}
                         size="sm"
                         className="w-[104px]"
                         loading={busyId === record.id}
@@ -480,52 +498,11 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
                       >
                         {record.finalizedAt ? 'Unfinalize' : 'Finalize'}
                       </Button>
-                      {/* A finalized record is frozen: no edit, no delete,
-                          for administrators too, until it is released. Both
-                          stay in place, disabled, so the column keeps its
-                          shape and the reason is one hover away. */}
-                      {record.finalizedAt ? (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled
-                            aria-label="Edit record"
-                            title="Unfinalize this record to edit it"
-                          >
-                            <PencilIcon />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled
-                            aria-label="Delete record"
-                            title="Unfinalize this record to delete it"
-                          >
-                            <TrashIcon />
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <LinkButton
-                            href={`/students/${studentId}/generate?record=${record.id}`}
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Edit record"
-                          >
-                            <PencilIcon />
-                          </LinkButton>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Delete record"
-                            className="text-[var(--color-danger)] hover:bg-red-50"
-                            onClick={() => setDeleting(record)}
-                          >
-                            <TrashIcon />
-                          </Button>
-                        </>
-                      )}
+                      <RowEditDelete
+                        locked={Boolean(record.finalizedAt)}
+                        editHref={`/students/${studentId}/generate?record=${record.id}`}
+                        onDelete={() => setDeleting(record)}
+                      />
                     </div>
                   </td>
                 </tr>
@@ -557,6 +534,14 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
             </>
           ) : (
             <>
+              {panel?.matchRecordId && (
+                <Button
+                  variant="secondary"
+                  onClick={() => setMatching(true)}
+                >
+                  Match transactions
+                </Button>
+              )}
               {panel?.editRecordId && (
                 <Button
                   variant="secondary"
@@ -599,6 +584,18 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
           </pre>
         )}
       </Modal>
+
+      {matching && panel?.matchRecordId && (
+        <MatchTransactionsDialog
+          endpoint={`/students/${studentId}/records/${panel.matchRecordId}/match-transactions`}
+          transactions={panel.json}
+          onClose={() => setMatching(false)}
+          onMatched={(transactions) => {
+            cache.current.delete(panel.matchRecordId!);
+            setPanel({ ...panel, json: transactions });
+          }}
+        />
+      )}
 
       <Modal
         open={Boolean(account)}
@@ -711,6 +708,52 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
   );
 }
 
+
+/**
+ * Edit and delete for a record row. A finalized record is frozen: no edit,
+ * no delete, for administrators too, until it is released. Both stay in
+ * place, disabled, so the column keeps its shape and the reason is one hover
+ * away.
+ */
+export function RowEditDelete({
+  locked,
+  editHref,
+  onDelete,
+}: {
+  locked: boolean;
+  editHref: string;
+  onDelete: () => void;
+}) {
+  if (locked) {
+    return (
+      <>
+        <Button variant="ghost" size="sm" disabled aria-label="Edit record" title="Unfinalize this record to edit it">
+          <PencilIcon />
+        </Button>
+        <Button variant="ghost" size="sm" disabled aria-label="Delete record" title="Unfinalize this record to delete it">
+          <TrashIcon />
+        </Button>
+      </>
+    );
+  }
+  return (
+    <>
+      <LinkButton href={editHref} variant="ghost" size="sm" aria-label="Edit record" title="Edit">
+        <PencilIcon />
+      </LinkButton>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label="Delete record"
+        title="Delete"
+        className="text-[var(--color-danger)] hover:bg-red-50"
+        onClick={onDelete}
+      >
+        <TrashIcon />
+      </Button>
+    </>
+  );
+}
 
 export function PencilIcon() {
   return (

@@ -129,17 +129,21 @@
     font-weight: 600;
     color: var(--color-muted);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     font-size: 11px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--color-line);
+    padding: 10px 16px;
+    border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
   }
 
   .data-table tbody td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #e2e8f0;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eef2f6;
     vertical-align: middle;
+  }
+
+  .data-table tbody tr {
+    transition: background-color 120ms ease;
   }
 
   .data-table tbody tr:hover {
@@ -164,6 +168,134 @@
   .data-table thead .col-actions,
   .data-table tbody tr:hover .col-actions {
     background-color: #f8fafc;
+  }
+
+  /* A row that is done: light green, including the pinned actions cell. */
+  .data-table tbody tr.row-done,
+  .data-table tbody tr.row-done .col-actions {
+    background-color: #f0fdf4;
+  }
+
+  .data-table tbody tr.row-done:hover,
+  .data-table tbody tr.row-done:hover .col-actions {
+    background-color: #dcfce7;
+  }
+
+  /* A compact pill for "view this" and "download that" inside table cells. */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid #dbe3ee;
+    border-radius: 999px;
+    background-color: #fff;
+    color: var(--color-ink);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+  }
+
+  .chip:hover:not(:disabled) {
+    border-color: #93c5fd;
+    background-color: #eff6ff;
+    color: var(--color-primary-dark);
+  }
+
+  .chip:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .chip svg {
+    color: var(--color-muted);
+  }
+
+  .chip:hover:not(:disabled) svg {
+    color: currentColor;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /*
+   * Below tablet width a row becomes a card: each cell is a labelled line
+   * (the label comes from data-label), and the actions sit at the bottom.
+   */
+  @media (max-width: 767px) {
+    .data-table thead {
+      display: none;
+    }
+
+    .data-table,
+    .data-table tbody {
+      display: block;
+    }
+
+    .data-table tbody tr {
+      display: block;
+      margin: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background-color: var(--color-surface);
+      overflow: hidden;
+    }
+
+    .data-table tbody tr:hover {
+      background-color: var(--color-surface);
+    }
+
+    .data-table tbody tr.row-done,
+    .data-table tbody tr.row-done:hover {
+      background-color: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
+    .data-table tbody td,
+    .data-table tbody tr:last-child td {
+      display: grid;
+      grid-template-columns: minmax(96px, 34%) 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 10px 14px;
+      border-bottom: 1px solid #eef2f6;
+    }
+
+    .data-table tbody td::before {
+      content: attr(data-label);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-muted);
+      padding-top: 2px;
+    }
+
+    .data-table tbody td:not([data-label]) {
+      grid-template-columns: 1fr;
+    }
+
+    .data-table tbody td:not([data-label])::before {
+      display: none;
+    }
+
+    .data-table .col-actions,
+    .data-table tbody tr:hover .col-actions {
+      position: static;
+      box-shadow: none;
+      background-color: #f8fafc;
+      border-bottom: none;
+    }
+
+    .data-table .col-actions > div {
+      flex-wrap: wrap;
+      justify-content: flex-start;
+    }
   }
 }
 

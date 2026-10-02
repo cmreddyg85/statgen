@@ -186,6 +186,21 @@ export async function updateAccountInfo(
   return rows[0] ? mapSummary(rows[0]) : null;
 }
 
+/** Overwrites the statement's transactions and nothing else. */
+export async function updateTransactions(
+  studentId: string,
+  id: string,
+  transactions: unknown[],
+): Promise<boolean> {
+  const { rowCount } = await query(
+    `UPDATE student_records
+        SET statement_json = jsonb_set(statement_json, '{transactions}', $3::jsonb)
+      WHERE student_id = $1 AND id = $2`,
+    [studentId, id, JSON.stringify(transactions)],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 export async function deleteRecord(studentId: string, id: string): Promise<boolean> {
   const { rowCount } = await query(
     'DELETE FROM student_records WHERE student_id = $1 AND id = $2',

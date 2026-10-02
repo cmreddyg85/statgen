@@ -38,6 +38,9 @@ export type AuditAction =
   | 'IDBI_REPORT_FINALIZED'
   | 'IDBI_REPORT_UNFINALIZED'
   | 'LIVE_STUDENTS_UPDATED'
+  | 'PAYMENT_CREATED'
+  | 'PAYMENT_UPDATED'
+  | 'PAYMENT_DELETED'
   | 'AUTHORIZATION_FAILURE';
 
 export interface AuditEntry {
@@ -134,14 +137,15 @@ export async function listRecentAudit(limit = 8): Promise<AuditLogRow[]> {
 /**
  * Everything on record for one account: actions the user performed, plus
  * changes an administrator made *to* the account. Both sides matter when
- * reviewing an account, so the modal shows them in one timeline.
+ * reviewing an account, so the modal shows them in one timeline. A null
+ * userId is the whole portal's activity.
  */
 export async function listAuditForUser(
-  userId: string,
+  userId: string | null,
   page: number,
   pageSize: number,
 ): Promise<Paginated<AuditLogRow>> {
-  const scope = `WHERE a.user_id = $1
+  const scope = `WHERE $1::uuid IS NULL OR a.user_id = $1
                     OR (a.entity_type = 'user' AND a.entity_id = $1)`;
 
   const totalResult = await query<{ count: string }>(

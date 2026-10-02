@@ -163,6 +163,15 @@ export async function apiBlob(path: string, body: unknown): Promise<Blob> {
 
 /** Saves a blob to the visitor's downloads. */
 export function downloadBlob(blob: Blob, filename: string): void {
+  // Inside the Android app, a WebView can't save blob: links; hand the bytes to the native side.
+  const android = (window as { StatGenAndroid?: { save(name: string, dataUrl: string): void } })
+    .StatGenAndroid;
+  if (android) {
+    const reader = new FileReader();
+    reader.onload = () => android.save(filename, reader.result as string);
+    reader.readAsDataURL(blob);
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

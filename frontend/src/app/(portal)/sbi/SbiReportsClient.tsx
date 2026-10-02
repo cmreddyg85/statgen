@@ -7,7 +7,8 @@ import type { RecordBank, SbiReportEntry, SbiReportSource, SbiReportSummary } fr
 import { Badge, StatusDot } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { DateCell } from '@/components/DateCell';
-import { EyeIcon } from '@/components/Icon';
+import { DownloadIcon, EyeIcon } from '@/components/Icon';
+import { MatchTransactionsDialog } from '@/components/MatchTransactionsDialog';
 import { ConfirmDialog, Modal } from '@/components/Modal';
 import { PageHeader } from '@/components/PageHeader';
 import { StatementDialog, downloadStatementJson } from '@/components/StatementDialog';
@@ -58,7 +59,13 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SbiReportEntry | null>(null);
-  const [viewing, setViewing] = useState<{ title: string; json: unknown } | null>(null);
+  const [viewing, setViewing] = useState<{
+    title: string;
+    json: unknown;
+    /** Set on a finalized report's transactions: they may be topped up to a closing balance. */
+    matchReportId?: string;
+  } | null>(null);
+  const [matching, setMatching] = useState(false);
   const [downloading, setDownloading] = useState<{
     report: SbiReportEntry;
     dummy: boolean;
@@ -102,9 +109,19 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
     }
   };
 
-  const openPanel = async (id: string, title: string, pick: (r: SbiReportEntry) => unknown) => {
+  const openPanel = async (
+    id: string,
+    key: string,
+    title: string,
+    pick: (r: SbiReportEntry) => unknown,
+  ) => {
     const report = await fullReport(id);
-    if (report) setViewing({ title, json: pick(report) });
+    if (!report) return;
+    setViewing({
+      title,
+      json: pick(report),
+      matchReportId: key === 'transactions' && report.finalizedAt ? id : undefined,
+    });
   };
 
   const open = async (id: string, target: 'json' | 'dummy' | 'download' | 'edit') => {
@@ -197,14 +214,8 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
                 <tr>
                   <th scope="col">Created</th>
                   <th scope="col">Customer</th>
-                  <th scope="col">Account</th>
-                  <th scope="col">Built from</th>
-                  <th scope="col">Transactions</th>
-                  {PANELS.map((item) => (
-                    <th key={item.key} scope="col">
-                      {item.label}
-                    </th>
-                  ))}
+                  <th scope="col">Details</th>
+                  <th scope="col">Downloads</th>
                   <th scope="col" className="col-actions text-right">
                     Actions
                   </th>
@@ -213,68 +224,72 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
               <tbody>
                 {reports.map((report) => (
                   <tr key={report.id}>
-                    <td>
-                      <DateCell value={report.createdAt} />
-                      {report.finalizedAt && (
-                        <span className="mt-1 inline-block">
+                    <td data-label="Created">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <DateCell value={report.createdAt} />
+                        {report.finalizedAt && (
                           <Badge tone="success">
                             <StatusDot tone="success" />
                             Finalized
                           </Badge>
-                        </span>
-                      )}
+                        )}
+                      </div>
                     </td>
-                    <td className="font-medium">
+                    <td data-label="Customer" className="font-medium">
                       {report.customerName ?? <span className="text-[var(--color-muted)]">—</span>}
                     </td>
-                    <td className="tabular-nums text-[var(--color-muted)]">
-                      {report.accountNumber ?? '—'}
+                    <td data-label="Details">
+                      <div className="chip-row">
+                        {PANELS.map((item) => (
+                          <button
+                            key={item.key}
+                            type="button"
+                            className="chip"
+                            title={`View ${item.label.toLowerCase()}`}
+                            onClick={() => void openPanel(report.id, item.key, item.label, item.pick)}
+                            disabled={busyId === report.id}
+                          >
+                            <EyeIcon />
+                            {item.label.replace(' details', '').replace(' transactions', '')}
+                          </button>
+                        ))}
+                      </div>
                     </td>
-                    <td>
-                      <Badge tone="neutral">{SOURCE_LABEL[report.source]}</Badge>
-                    </td>
-                    <td className="tabular-nums">{report.transactionCount}</td>
-                    {PANELS.map((item) => (
-                      <td key={item.key}>
+                    <td data-label="Downloads">
+                      <div className="chip-row">
                         <button
                           type="button"
-                          onClick={() => void openPanel(report.id, item.label, item.pick)}
-                          disabled={busyId === report.id}
-                          className="inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-medium text-[var(--color-primary)] hover:underline disabled:opacity-60"
+                          className="chip"
+                          onClick={() => void open(report.id, 'dummy')}
                         >
-                          {item.label}
-                          <EyeIcon />
+                          <DownloadIcon />
+                          {isIdbi ? 'Sample PDF' : 'Dummy PDF'}
                         </button>
-                      </td>
-                    ))}
+                        {!isIdbi && (
+                          <button
+                            type="button"
+                            className="chip"
+                            onClick={() => void open(report.id, 'download')}
+                          >
+                            <DownloadIcon />
+                            Statement
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="chip"
+                          disabled={busyId === report.id}
+                          onClick={() => void open(report.id, 'json')}
+                        >
+                          <DownloadIcon />
+                          JSON
+                        </button>
+                      </div>
+                    </td>
                     <td className="col-actions">
                       <div className="flex items-center justify-end gap-1">
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          loading={busyId === report.id}
-                          onClick={() => void open(report.id, 'json')}
-                        >
-                          Download JSON
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => void open(report.id, 'dummy')}
-                        >
-                          {isIdbi ? 'Download sample PDF' : 'Download Dummy PDF'}
-                        </Button>
-                        {!isIdbi && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => void open(report.id, 'download')}
-                          >
-                            Download statement
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
+                          variant={report.finalizedAt ? 'secondary' : 'primary'}
                           size="sm"
                           className="w-[104px]"
                           loading={busyId === report.id}
@@ -336,15 +351,34 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
         width="lg"
         onClose={() => setViewing(null)}
         footer={
-          <Button variant="secondary" onClick={() => setViewing(null)}>
-            Close
-          </Button>
+          <>
+            {viewing?.matchReportId && (
+              <Button variant="secondary" onClick={() => setMatching(true)}>
+                Match transactions
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => setViewing(null)}>
+              Close
+            </Button>
+          </>
         }
       >
         <pre className="max-h-[60vh] overflow-auto rounded-[8px] bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
           {JSON.stringify(viewing?.json ?? null, null, 2)}
         </pre>
       </Modal>
+
+      {matching && viewing?.matchReportId && (
+        <MatchTransactionsDialog
+          endpoint={`${base}/${viewing.matchReportId}/match-transactions`}
+          transactions={viewing.json}
+          onClose={() => setMatching(false)}
+          onMatched={(transactions) => {
+            cache.current.delete(viewing.matchReportId!);
+            setViewing({ ...viewing, json: transactions });
+          }}
+        />
+      )}
 
       {downloading && (
         <StatementDialog

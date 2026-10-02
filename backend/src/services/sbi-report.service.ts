@@ -15,6 +15,7 @@ import type {
   SbiReportSummary,
 } from '../types.js';
 import { badRequest, conflict, notFound } from '../utils/errors.js';
+import { matchTransactions } from '../statement/match.js';
 import type { RenderOptions } from '../sbi/statement-render.js';
 
 /**
@@ -208,4 +209,42 @@ export async function statementPdf(
   const report = await getById(bank, id);
   const render = bank === 'IDBI' ? renderIdbiStatement : renderStatement;
   return render(report.statement as StatementPayload, options);
+}
+
+/**
+ * Appends one or two transactions so a finalized report closes on `target`;
+ * existing rows stay as they are. The one change a finalized report allows.
+ */
+export async function matchClosingBalance(
+  bank: RecordBank,
+  id: string,
+  target: number,
+  actor: RequestActor,
+): Promise<{ added: unknown[]; transactions: unknown[] }> {
+  const report = await getById(bank, id);
+  if (!report.finalizedAt) throw conflict('Finalize the report before matching its transactions.');
+
+  let result: { added: unknown[]; transactions: unknown[] };
+  try {
+    result = matchTransactions(
+      bank,
+      (report.statement as { transactions?: unknown[] }).transactions ?? [],
+      target,
+    );
+  } catch (error) {
+    throw badRequest((error as Error).message);
+  }
+  if (result.added.length === 0) return result;
+
+  await reports.updateTransactions(id, result.transactions);
+  await recordAudit({
+    userId: actor.user.id,
+    action: `${bank}_REPORT_UPDATED`,
+    entityType: 'sbi_report',
+    entityId: id,
+    metadata: { matchedClosingBalance: target, added: result.added.length },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+  return result;
 }

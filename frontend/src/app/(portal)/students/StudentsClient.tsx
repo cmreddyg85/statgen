@@ -47,6 +47,17 @@ export function StudentsClient() {
   const [editing, setEditing] = useState<Student | null>(null);
   const [deleting, setDeleting] = useState<Student | null>(null);
   const [purging, setPurging] = useState<Student | null>(null);
+  // What a permanent delete takes with it; null while it loads.
+  const [impact, setImpact] = useState<{ records: number; payments: number } | null>(null);
+
+  useEffect(() => {
+    if (!purging) return;
+    setImpact(null);
+    api
+      .get<{ records: number; payments: number }>(`/students/${purging.id}/delete-impact`)
+      .then(setImpact)
+      .catch(() => setImpact(null));
+  }, [purging]);
   const [actionPending, setActionPending] = useState<string | null>(null);
 
   // Only an admin can filter by owner, and only an admin may call /users.
@@ -262,8 +273,8 @@ export function StudentsClient() {
                 <tbody>
                   {data.items.map((student) => (
                     <tr key={student.id}>
-                      <td className="tabular-nums">{student.studentCode}</td>
-                      <td className="font-medium">
+                      <td data-label="ID" className="tabular-nums">{student.studentCode}</td>
+                      <td data-label="Name" className="font-medium">
                         <Link
                           href={`/students/${student.id}`}
                           className="text-[var(--color-primary)] hover:underline"
@@ -271,10 +282,10 @@ export function StudentsClient() {
                           {student.name}
                         </Link>
                       </td>
-                      <td className="tabular-nums">{formatMobile(student.mobileNumber) || <span className="text-[var(--color-muted)]">—</span>}</td>
-                      <td>{student.offerCompany ?? <span className="text-[var(--color-muted)]">—</span>}</td>
+                      <td data-label="Mobile" className="tabular-nums">{formatMobile(student.mobileNumber) || <span className="text-[var(--color-muted)]">—</span>}</td>
+                      <td data-label="Offer company">{student.offerCompany ?? <span className="text-[var(--color-muted)]">—</span>}</td>
                       {isAdmin && status !== 'active' && (
-                        <td>
+                        <td data-label="Status">
                           {student.archivedAt ? (
                             <Badge tone="neutral">
                               <StatusDot tone="neutral" />
@@ -289,11 +300,11 @@ export function StudentsClient() {
                         </td>
                       )}
                       {isAdmin && (
-                        <td className="text-[var(--color-muted)]">
+                        <td data-label="Created by" className="text-[var(--color-muted)]">
                           {student.createdByName ?? '—'}
                         </td>
                       )}
-                      <td>
+                      <td data-label="Created">
                         <DateCell value={student.createdAt} />
                       </td>
                       <td className="col-actions">
@@ -388,7 +399,11 @@ export function StudentsClient() {
         title="Delete student"
         message={
           purging
-            ? `Permanently delete ${purging.name}? Every record generated for them, and the statement pages attached to those records, go with it. This cannot be undone — archive instead if you only want them out of the way.`
+            ? `Permanently delete ${purging.name}? ${
+                impact
+                  ? `This also deletes ${plural(impact.records, 'generated record')} (with their attached files) and ${plural(impact.payments, 'payment')} (with every amount received).`
+                  : 'This also deletes every record and payment for them.'
+              } This cannot be undone — archive instead if you only want them out of the way.`
             : ''
         }
         confirmLabel="Delete permanently"
@@ -399,3 +414,5 @@ export function StudentsClient() {
     </>
   );
 }
+
+const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;

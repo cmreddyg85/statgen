@@ -12,15 +12,19 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 
 /**
  * Per-user activity timeline (admin only). Shows both what the user did and
- * what administrators did to their account, newest first.
+ * what administrators did to their account, newest first. With `all`, the
+ * whole portal's activity instead.
  */
 export function UserAuditDialog({
   user,
+  all = false,
   onClose,
 }: {
   user: User | null;
+  all?: boolean;
   onClose: () => void;
 }) {
+  const open = all || user !== null;
   const [data, setData] = useState<UserAuditPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,16 +32,16 @@ export function UserAuditDialog({
 
   // Start each visit at the newest page.
   useEffect(() => {
-    if (user) setPage(1);
-  }, [user]);
+    if (open) setPage(1);
+  }, [open, user]);
 
   const load = useCallback(async () => {
-    if (!user) return;
+    if (!open) return;
     setLoading(true);
     setError(null);
     try {
       setData(
-        await api.get<UserAuditPage>(`/users/${user.id}/audit`, {
+        await api.get<UserAuditPage>(all || !user ? '/users/audit' : `/users/${user.id}/audit`, {
           query: { page, pageSize: 10 },
         }),
       );
@@ -46,7 +50,7 @@ export function UserAuditDialog({
     } finally {
       setLoading(false);
     }
-  }, [user, page]);
+  }, [open, all, user, page]);
 
   useEffect(() => {
     void load();
@@ -54,10 +58,14 @@ export function UserAuditDialog({
 
   return (
     <Modal
-      open={user !== null}
-      title="Account activity"
+      open={open}
+      title={all ? 'All activity' : 'Account activity'}
       description={
-        user ? `Audit history for ${user.name} (${user.username}).` : ''
+        all
+          ? 'Everything recorded across the portal, newest first.'
+          : user
+            ? `Audit history for ${user.name} (${user.username}).`
+            : ''
       }
       onClose={onClose}
       footer={
@@ -74,7 +82,7 @@ export function UserAuditDialog({
         ) : data && data.items.length === 0 ? (
           <EmptyState
             title="No activity recorded"
-            message="Nothing has been logged for this account yet."
+            message={all ? 'Nothing has been logged yet.' : 'Nothing has been logged for this account yet.'}
           />
         ) : data ? (
           <>

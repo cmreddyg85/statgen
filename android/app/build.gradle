@@ -1,0 +1,21 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.statgen.app'
+    compileSdk 37
+
+    defaultConfig {
+        applicationId 'com.statgen.app'
+        minSdk 29
+        targetSdk 37
+        versionCode 1
+        versionName '1.0'
+        buildConfigField 'String', 'STATGEN_URL', "\"${project.property('statgenUrl')}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}

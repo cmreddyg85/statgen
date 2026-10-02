@@ -21,6 +21,16 @@ export const usersRouter = Router();
 // Every route in this file is admin-only, enforced server-side (PRD 13.4).
 usersRouter.use(requireAuth, requireAdmin);
 
+/** GET /api/v1/users/audit — every user's activity, newest first. Before /:id so it isn't read as an id. */
+usersRouter.get(
+  '/audit',
+  validate(paginationSchema, 'query'),
+  asyncHandler(async (req, res) => {
+    const { page, pageSize } = queryParams<{ page: number; pageSize: number }>(req);
+    res.json(await listAuditForUser(null, page, pageSize));
+  }),
+);
+
 /** GET /api/v1/users/stats — admin dashboard KPI cards. */
 usersRouter.get(
   '/stats',
