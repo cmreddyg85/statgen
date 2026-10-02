@@ -216,7 +216,7 @@ export async function deleteStudent(id: string): Promise<boolean> {
 
 /** Takes the student off the public API (the Live screen's selection). */
 export async function clearLive(id: string): Promise<void> {
-  await query('UPDATE students SET live = false WHERE id = $1 AND live', [id]);
+  await query('UPDATE students SET live = false, active_live = false WHERE id = $1 AND live', [id]);
 }
 
 export async function countRecords(studentId: string): Promise<number> {

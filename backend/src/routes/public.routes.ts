@@ -14,20 +14,36 @@ import { badRequest, notFound } from "../utils/errors.js";
 export const publicRouter = Router();
 
 /**
+ * The student code a public call is about: the one in the path, or, when the
+ * path has none, the active live student picked on the Live screen.
+ */
+async function studentCode(param: string | undefined): Promise<string> {
+  if (param !== undefined) {
+    if (!/^[1-9]\d{4}$/.test(param))
+      throw badRequest("Student id must be 5 digits.");
+    return param;
+  }
+  const { rows } = await query<{ student_code: string }>(
+    `SELECT student_code FROM students
+      WHERE active_live AND live AND archived_at IS NULL`,
+  );
+  if (!rows[0]) throw notFound("No active live student is set.");
+  return rows[0].student_code;
+}
+
+/**
  * No session needed: the five-digit student code is the only key. Only
  * students an admin set live are served; anyone else is a 404. A live
  * student without a finalized record for that bank gets the empty shape.
  * Callable from any origin: no cookies are involved, so `*` is safe here.
  */
 publicRouter.get(
-  "/:bank(sbi|idbi)-details/:code",
+  "/:bank(sbi|idbi)-details/:code?",
   cors(),
   apiRateLimiter,
   asyncHandler(async (req, res) => {
     const bank = req.params.bank!.toUpperCase();
-    const code = req.params.code ?? "";
-    if (!/^[1-9]\d{4}$/.test(code))
-      throw badRequest("Student id must be 5 digits.");
+    const code = await studentCode(req.params.code);
 
     const { rows } = await query<{
       account_info: unknown;
@@ -56,13 +72,11 @@ publicRouter.get(
  * `fileUrl` points at /email-files on whichever host this was called on.
  */
 publicRouter.get(
-  "/email-details/:code",
+  "/email-details/:code?",
   cors(),
   apiRateLimiter,
   asyncHandler(async (req, res) => {
-    const code = req.params.code ?? "";
-    if (!/^[1-9]\d{4}$/.test(code))
-      throw badRequest("Student id must be 5 digits.");
+    const code = await studentCode(req.params.code);
 
     const { rows } = await query<{
       output: Record<string, unknown>[] | null;
@@ -146,14 +160,12 @@ export function toIsoDate(value: unknown): string | null {
  * with the account's password when there is one; otherwise it is unprotected.
  */
 publicRouter.get(
-  "/:bank(sbi|idbi)-download/:code",
+  "/:bank(sbi|idbi)-download/:code?",
   cors({ exposedHeaders: ["Content-Disposition"] }),
   apiRateLimiter,
   asyncHandler(async (req, res) => {
     const bank = req.params.bank!.toUpperCase();
-    const code = req.params.code ?? "";
-    if (!/^[1-9]\d{4}$/.test(code))
-      throw badRequest("Student id must be 5 digits.");
+    const code = await studentCode(req.params.code);
     const fromDate = toIsoDate(req.query.fromDate);
     const toDate = toIsoDate(req.query.toDate);
     if (!fromDate || !toDate)

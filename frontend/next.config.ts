@@ -17,6 +17,12 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: '/api/v1/:path*', destination: `${apiOrigin}/api/v1/:path*` },
+      // The routes without :code serve the active live student.
+      { source: '/api/sbi-details', destination: `${apiOrigin}/api/sbi-details` },
+      { source: '/api/idbi-details', destination: `${apiOrigin}/api/idbi-details` },
+      { source: '/api/sbi-download', destination: `${apiOrigin}/api/sbi-download` },
+      { source: '/api/idbi-download', destination: `${apiOrigin}/api/idbi-download` },
+      { source: '/api/email-details', destination: `${apiOrigin}/api/email-details` },
       { source: '/api/sbi-details/:code', destination: `${apiOrigin}/api/sbi-details/:code` },
       { source: '/api/idbi-details/:code', destination: `${apiOrigin}/api/idbi-details/:code` },
       { source: '/api/sbi-download/:code', destination: `${apiOrigin}/api/sbi-download/:code` },

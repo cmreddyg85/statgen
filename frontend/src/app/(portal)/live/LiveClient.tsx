@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { Button } from '@/components/Button';
 import { PageHeader } from '@/components/PageHeader';
@@ -17,6 +17,7 @@ interface LiveStudent {
 interface LiveResponse {
   students: LiveStudent[];
   selected: string[];
+  active: string | null;
 }
 
 export function LiveClient() {
@@ -25,11 +26,14 @@ export function LiveClient() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   /** What is saved, as opposed to what is ticked. */
   const [live, setLive] = useState<Set<string>>(new Set());
+  /** Served by the public APIs called without a student id. */
+  const [active, setActive] = useState('');
+  const [savedActive, setSavedActive] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [open, setOpen] = useState(false);
+  /** Which of the two dropdowns is open. */
+  const [open, setOpen] = useState<'students' | 'active' | null>(null);
   const [search, setSearch] = useState('');
-  const boxRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -38,6 +42,8 @@ export function LiveClient() {
       setStudents(data.students);
       setSelected(new Set(data.selected));
       setLive(new Set(data.selected));
+      setActive(data.active ?? '');
+      setSavedActive(data.active ?? '');
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Could not load students.');
     }
@@ -51,9 +57,9 @@ export function LiveClient() {
   useEffect(() => {
     if (!open) return;
     const onClick = (event: MouseEvent) => {
-      if (!boxRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!(event.target as Element).closest('[data-menu]')) setOpen(null);
     };
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false);
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(null);
     document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onKey);
     return () => {
@@ -65,16 +71,20 @@ export function LiveClient() {
   const toggle = (id: string) =>
     setSelected((current) => {
       const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        // Taking a student off live takes them off active too.
+        setActive((current) => (current === id ? '' : current));
+      } else next.add(id);
       return next;
     });
 
   const save = async () => {
     setSaving(true);
     try {
-      await api.put('/live', { studentIds: [...selected] });
+      await api.put('/live', { studentIds: [...selected], activeStudentId: active || null });
       setLive(new Set(selected));
+      setSavedActive(active);
       toast.success('Live students saved.');
     } catch (caught) {
       toast.error(caught instanceof ApiError ? caught.message : 'Could not save.');
@@ -89,6 +99,7 @@ export function LiveClient() {
   );
   const chosen = (students ?? []).filter((s) => selected.has(s.id));
   const liveNow = (students ?? []).filter((s) => live.has(s.id));
+  const activeStudent = chosen.find((s) => s.id === active);
 
   return (
     <>
@@ -109,21 +120,21 @@ export function LiveClient() {
             }}
             className="space-y-4"
           >
-            <div ref={boxRef} className="relative max-w-xl">
+            <div data-menu className="relative max-w-xl">
               <span className="field-label">Students</span>
               <button
                 type="button"
                 className="field-input flex items-center justify-between text-left"
                 aria-haspopup="listbox"
-                aria-expanded={open}
-                onClick={() => setOpen((value) => !value)}
+                aria-expanded={open === 'students'}
+                onClick={() => setOpen((value) => (value === 'students' ? null : 'students'))}
               >
                 <span className={chosen.length ? '' : 'text-[var(--color-muted)]'}>
                   {chosen.length ? `${chosen.length} selected` : 'Select students'}
                 </span>
                 <span aria-hidden="true">▾</span>
               </button>
-              {open && (
+              {open === 'students' && (
                 <div className="absolute z-20 mt-1 w-full rounded-md border border-[var(--color-line)] bg-white shadow-lg">
                   <div className="border-b border-[var(--color-line)] p-2">
                     <input
@@ -161,6 +172,55 @@ export function LiveClient() {
               )}
             </div>
 
+            <div data-menu className="relative max-w-xl">
+              <span className="field-label">Active live student</span>
+              <button
+                type="button"
+                className="field-input flex items-center justify-between text-left"
+                aria-haspopup="listbox"
+                aria-expanded={open === 'active'}
+                onClick={() => setOpen((value) => (value === 'active' ? null : 'active'))}
+              >
+                <span className={activeStudent ? '' : 'text-[var(--color-muted)]'}>
+                  {activeStudent ? `${activeStudent.studentCode} — ${activeStudent.name}` : 'None'}
+                </span>
+                <span aria-hidden="true">▾</span>
+              </button>
+              {open === 'active' && (
+                <div className="absolute z-20 mt-1 w-full rounded-md border border-[var(--color-line)] bg-white shadow-lg">
+                  <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
+                    {[null, ...chosen].map((s) => (
+                      <li key={s?.id ?? 'none'} role="option" aria-selected={active === (s?.id ?? '')}>
+                        <label className="flex cursor-pointer items-center gap-3 px-3 py-2 text-sm hover:bg-slate-50">
+                          <input
+                            type="radio"
+                            name="active-live-student"
+                            checked={active === (s?.id ?? '')}
+                            onChange={() => {
+                              setActive(s?.id ?? '');
+                              setOpen(null);
+                            }}
+                          />
+                          {s ? (
+                            <>
+                              <span className="tabular-nums text-[var(--color-muted)]">{s.studentCode}</span>
+                              <span className="flex-1">{s.name}</span>
+                              <span className="text-xs text-[var(--color-muted)]">{s.banks.join(', ')}</span>
+                            </>
+                          ) : (
+                            <span className="flex-1 text-[var(--color-muted)]">None</span>
+                          )}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <p className="-mt-2 text-xs text-[var(--color-muted)]">
+              Served by the public APIs when they are called without a student id.
+            </p>
+
             <Button type="submit" loading={saving}>
               Save
             </Button>
@@ -179,7 +239,14 @@ export function LiveClient() {
               {liveNow.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 px-5 py-2.5 text-sm">
                   <span className="tabular-nums text-[var(--color-muted)]">{s.studentCode}</span>
-                  <span className="flex-1">{s.name}</span>
+                  <span className="flex-1">
+                    {s.name}
+                    {s.id === savedActive && (
+                      <span className="ml-2 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
+                        Active
+                      </span>
+                    )}
+                  </span>
                   <span className="text-xs text-[var(--color-muted)]">{s.banks.join(', ')}</span>
                 </li>
               ))}
