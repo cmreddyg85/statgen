@@ -129,7 +129,16 @@ function accountColumns(
  * a statement payload is hundreds of kilobytes — so a record is fetched the
  * first time one of its panels, downloads or the PDF dialog is opened.
  */
-export function RecordsTable({ studentId, bank }: { studentId: string; bank: RecordBank }) {
+export function RecordsTable({
+  studentId,
+  bank,
+  onChange,
+}: {
+  studentId: string;
+  bank: RecordBank;
+  /** Called after every (re)load, so the page can follow finalize changes. */
+  onChange?: () => void;
+}) {
   const toast = useToast();
   // IDBI-format records have a SAMPLE-marked PDF only, so there is no clean
   // download to release.
@@ -177,6 +186,7 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
         `/students/${studentId}/records`,
       );
       setRecords(rows.filter((row) => row.bank === bank));
+      onChange?.();
     } catch (caught) {
       setError(
         caught instanceof ApiError ? caught.message : 'Could not load generated records.',
@@ -184,7 +194,7 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
     } finally {
       setLoading(false);
     }
-  }, [studentId, bank]);
+  }, [studentId, bank, onChange]);
 
   useEffect(() => {
     void load();
@@ -333,6 +343,20 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
       toast.error(
         caught instanceof ApiError ? caught.message : 'Could not update the record.',
       );
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /** Admin only: stores the done status and mails the record's JSON. */
+  const markDone = async (record: StudentRecordSummary) => {
+    setBusyId(record.id);
+    try {
+      await api.post(`/students/${studentId}/records/${record.id}/done`);
+      toast.success('Marked done. Mail sent.');
+      await load();
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not mark the record done.');
     } finally {
       setBusyId(null);
     }
@@ -487,6 +511,18 @@ export function RecordsTable({ studentId, bank }: { studentId: string; bank: Rec
                           }
                         >
                           {record.downloadReleasedAt ? 'Hide download' : 'Show download'}
+                        </Button>
+                      )}
+                      {isAdmin && record.finalizedAt && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="w-[72px]"
+                          disabled={Boolean(record.doneAt)}
+                          loading={busyId === record.id}
+                          onClick={() => void markDone(record)}
+                        >
+                          {record.doneAt ? 'Done ✓' : 'Done'}
                         </Button>
                       )}
                       <Button

@@ -414,6 +414,29 @@ studentsRouter.post(
   }),
 );
 
+/** POST /api/v1/students/:id/done — admin: mails all finalized records, stores done. */
+studentsRouter.post(
+  '/:id/done',
+  requireRole('ADMIN'),
+  validate(uuidParamSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id } = routeParams<{ id: string }>(req);
+    await recordService.markStudentDone(id, getActor(req));
+    res.json({ ok: true });
+  }),
+);
+
+/** POST /api/v1/students/:id/records/:recordId/done — admin: marks done and mails the JSON. */
+studentsRouter.post(
+  '/:id/records/:recordId/done',
+  requireRole('ADMIN'),
+  validate(recordParamsSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    res.json({ record: await recordService.markDone(id, recordId, getActor(req)) });
+  }),
+);
+
 /** POST /api/v1/students/:id/records/:recordId/unfinalize */
 studentsRouter.post(
   '/:id/records/:recordId/unfinalize',

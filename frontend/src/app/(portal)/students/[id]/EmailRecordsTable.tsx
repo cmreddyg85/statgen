@@ -25,7 +25,7 @@ const OUTPUT_KEYS = [
  * the output JSON — administrators only — is fetched when opened. Finalizing
  * locks a record exactly as it does for the bank formats.
  */
-export function EmailRecordsTable({ studentId }: { studentId: string }) {
+export function EmailRecordsTable({ studentId, onChange }: { studentId: string; onChange?: () => void }) {
   const toast = useToast();
   const { isAdmin } = useSession();
   const [records, setRecords] = useState<StudentRecordSummary[]>([]);
@@ -44,6 +44,7 @@ export function EmailRecordsTable({ studentId }: { studentId: string }) {
         `/students/${studentId}/records`,
       );
       setRecords(rows.filter((row) => row.bank === 'EMAIL'));
+      onChange?.();
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Could not load email records.');
     } finally {
@@ -74,6 +75,20 @@ export function EmailRecordsTable({ studentId }: { studentId: string }) {
       setPanel({ title: 'Output JSON', json: output });
     } catch (caught) {
       toast.error(caught instanceof ApiError ? caught.message : 'Could not open this record.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /** Admin only: stores the done status and mails this record's JSON. */
+  const markDone = async (record: StudentRecordSummary) => {
+    setBusyId(record.id);
+    try {
+      await api.post(`/students/${studentId}/records/${record.id}/done`);
+      toast.success('Marked done. Mail sent.');
+      await load();
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not mark the record done.');
     } finally {
       setBusyId(null);
     }
@@ -212,6 +227,18 @@ export function EmailRecordsTable({ studentId }: { studentId: string }) {
                     </td>
                     <td className="col-actions">
                       <div className="flex items-center justify-end gap-1">
+                        {isAdmin && record.finalizedAt && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="w-[72px]"
+                            disabled={Boolean(record.doneAt)}
+                            loading={busyId === record.id}
+                            onClick={() => void markDone(record)}
+                          >
+                            {record.doneAt ? 'Done ✓' : 'Done'}
+                          </Button>
+                        )}
                         <Button
                           variant={record.finalizedAt ? 'secondary' : 'primary'}
                           size="sm"

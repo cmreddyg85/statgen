@@ -13,6 +13,13 @@ export default function proxy(request: NextRequest) {
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
 
   if (pathname === '/login') {
+    // A `reason` means the server already rejected this cookie; bouncing back
+    // to `/` would loop forever, so drop the stale cookie and show the form.
+    if (request.nextUrl.searchParams.has('reason')) {
+      const response = NextResponse.next();
+      response.cookies.delete(SESSION_COOKIE);
+      return response;
+    }
     if (hasSessionCookie) {
       return NextResponse.redirect(new URL('/', request.url));
     }

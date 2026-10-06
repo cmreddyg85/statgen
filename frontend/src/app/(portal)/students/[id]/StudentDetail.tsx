@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { formatDateTime, formatMobile } from '@/lib/format';
-import type { Student } from '@/lib/types';
+import type { Student, StudentRecordSummary } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
-import { LinkButton } from '@/components/Button';
+import { Button, LinkButton } from '@/components/Button';
+import { useSession } from '@/lib/session-context';
+import { useToast } from '@/components/Toast';
 import { PageHeader } from '@/components/PageHeader';
 import { ErrorState, LoadingState } from '@/components/States';
 import { EmailRecordsTable } from './EmailRecordsTable';
@@ -21,6 +23,37 @@ export function StudentDetail({ studentId }: { studentId: string }) {
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { isAdmin } = useSession();
+  const toast = useToast();
+  const [hasFinal, setHasFinal] = useState(false);
+  const [doneBusy, setDoneBusy] = useState(false);
+
+  // The record tables call this whenever they reload, so the Done button
+  // follows finalize / unfinalize.
+  const refreshFinal = useCallback(async () => {
+    try {
+      const { records } = await api.get<{ records: StudentRecordSummary[] }>(
+        `/students/${studentId}/records`,
+      );
+      setHasFinal(records.some((r) => r.finalizedAt));
+    } catch {
+      /* the tables show their own errors */
+    }
+  }, [studentId]);
+
+  const markDone = async () => {
+    setDoneBusy(true);
+    try {
+      await api.post(`/students/${studentId}/done`);
+      toast.success('Student marked done. Mail sent.');
+      await load();
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not mark the student done.');
+    } finally {
+      setDoneBusy(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,7 +120,19 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           student.createdByName ?? 'unknown'
         }.`}
         actions={
-          <LinkButton href={`/students/${student.id}/generate`}>Generate record</LinkButton>
+          <div className="flex items-center gap-2">
+            {isAdmin && hasFinal && (
+              <Button
+                variant="secondary"
+                loading={doneBusy}
+                title={student.doneAt ? `Done ${formatDateTime(student.doneAt)} — click to resend` : undefined}
+                onClick={() => void markDone()}
+              >
+                {student.doneAt ? 'Done ✓' : 'Done'}
+              </Button>
+            )}
+            <LinkButton href={`/students/${student.id}/generate`}>Generate record</LinkButton>
+          </div>
         }
       />
 
@@ -122,9 +167,9 @@ export function StudentDetail({ studentId }: { studentId: string }) {
           </dl>
         </section>
 
-        <RecordsTable studentId={student.id} bank="SBI" />
-        <RecordsTable studentId={student.id} bank="IDBI" />
-        <EmailRecordsTable studentId={student.id} />
+        <RecordsTable studentId={student.id} bank="SBI" onChange={refreshFinal} />
+        <RecordsTable studentId={student.id} bank="IDBI" onChange={refreshFinal} />
+        <EmailRecordsTable studentId={student.id} onChange={refreshFinal} />
       </div>
     </>
   );

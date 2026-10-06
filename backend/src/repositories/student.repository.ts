@@ -13,6 +13,7 @@ interface StudentRow {
   created_at: string;
   updated_at: string;
   archived_at: string | null;
+  done_at: string | null;
 }
 
 function mapStudentRow(row: StudentRow): StudentRecord {
@@ -28,13 +29,14 @@ function mapStudentRow(row: StudentRow): StudentRecord {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
+    doneAt: row.done_at,
   };
 }
 
 const SELECT_STUDENT = `
   SELECT s.id, s.student_code, s.name, s.mobile_number, s.offer_company, s.referred_by,
          s.created_by, cu.name AS created_by_name,
-         s.created_at, s.updated_at, s.archived_at
+         s.created_at, s.updated_at, s.archived_at, s.done_at
     FROM students s
     LEFT JOIN users cu ON cu.id = s.created_by
 `;
@@ -225,4 +227,12 @@ export async function countRecords(studentId: string): Promise<number> {
     [studentId],
   );
   return Number(rows[0]?.count ?? 0);
+}
+
+export async function setDone(id: string, userId: string): Promise<void> {
+  await query('UPDATE students SET done_at = now(), done_by = $2 WHERE id = $1', [id, userId]);
+}
+
+export async function clearDone(id: string): Promise<void> {
+  await query('UPDATE students SET done_at = NULL, done_by = NULL WHERE id = $1', [id]);
 }

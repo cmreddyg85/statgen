@@ -18,6 +18,7 @@ interface RecordRow {
   finalized_by_name: string | null;
   download_released_at: string | null;
   download_released_by: string | null;
+  done_at: string | null;
   email_input: unknown;
 }
 
@@ -38,6 +39,7 @@ function mapSummary(row: SummaryRow): StudentRecordSummary {
     finalizedByName: row.finalized_by_name,
     downloadReleasedAt: row.download_released_at,
     downloadReleasedBy: row.download_released_by,
+    doneAt: row.done_at,
     emailInput: row.email_input ?? null,
   };
 }
@@ -54,7 +56,7 @@ function mapRecord(row: RecordRow): StudentRecordEntry {
 const COLUMNS = `r.id, r.student_id, r.bank, r.created_by, u.name AS created_by_name,
                  r.created_at, r.updated_at, r.attachment_name,
                  r.finalized_at, r.finalized_by, f.name AS finalized_by_name,
-                 r.download_released_at, r.download_released_by,
+                 r.download_released_at, r.download_released_by, r.done_at,
                  -- Small, and the email table lists its subjects and files.
                  CASE WHEN r.bank = 'EMAIL' THEN r.input_json END AS email_input`;
 
@@ -275,7 +277,9 @@ export async function setFinalized(
               -- Releasing the download refers to the finalized statement, so
               -- unfinalizing takes it back.
               download_released_at = CASE WHEN $3::uuid IS NULL THEN NULL ELSE download_released_at END,
-              download_released_by = CASE WHEN $3::uuid IS NULL THEN NULL ELSE download_released_by END
+              download_released_by = CASE WHEN $3::uuid IS NULL THEN NULL ELSE download_released_by END,
+              done_at = CASE WHEN $3::uuid IS NULL THEN NULL ELSE done_at END,
+              done_by = CASE WHEN $3::uuid IS NULL THEN NULL ELSE done_by END
         WHERE student_id = $1 AND id = $2
         RETURNING *
      )
@@ -376,4 +380,24 @@ export async function findFile(
   );
   const row = rows[0];
   return row ? { buffer: row.data, name: row.name, type: row.type } : null;
+}
+
+/** Marks the record done by `userId`, or clears it when null. */
+export async function setDone(
+  studentId: string,
+  id: string,
+  userId: string | null,
+): Promise<StudentRecordSummary | null> {
+  const { rows } = await query<SummaryRow>(
+    `WITH changed AS (
+       UPDATE student_records
+          SET done_at = CASE WHEN $3::uuid IS NULL THEN NULL ELSE now() END,
+              done_by = $3::uuid
+        WHERE student_id = $1 AND id = $2
+        RETURNING *
+     )
+     SELECT ${COLUMNS} FROM changed r ${JOINS}`,
+    [studentId, id, userId],
+  );
+  return rows[0] ? mapSummary(rows[0]) : null;
 }

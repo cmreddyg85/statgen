@@ -44,6 +44,8 @@ export interface StudentRecordSummary {
   /** Set when an admin released the un-watermarked statement to the owner. */
   downloadReleasedAt: string | null;
   downloadReleasedBy: string | null;
+  /** Set when an admin marked the finalized record done and it was mailed. */
+  doneAt: string | null;
   /** The email form's input, listed with EMAIL records only. */
   emailInput: unknown;
 }
@@ -103,6 +105,8 @@ export interface StudentRecord {
   updatedAt: string;
   /** Set when the student was archived; archived students are hidden from users. */
   archivedAt: string | null;
+  /** Set when an admin marked the student done and the backup mail went out. */
+  doneAt: string | null;
 }
 
 export interface Paginated<T> {

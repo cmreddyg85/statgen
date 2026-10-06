@@ -31,6 +31,7 @@ export interface Student {
   updatedAt: string;
   /** Set when the student was archived; users never see archived students. */
   archivedAt: string | null;
+  doneAt: string | null;
 }
 
 /** One row of a transaction table, exactly as the SBI module emits it. */
@@ -112,6 +113,7 @@ export interface StudentRecordSummary {
   /** Set when an admin released the clean statement to the student's owner. */
   downloadReleasedAt: string | null;
   downloadReleasedBy: string | null;
+  doneAt: string | null;
   /** The email form's input, on EMAIL records only. */
   emailInput: { emails: EmailInput[] } | null;
 }

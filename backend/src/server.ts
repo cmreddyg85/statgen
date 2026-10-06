@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { checkDatabaseConnection, pool } from './db/pool.js';
+import { startPaymentBackup } from './services/payment-backup.service.js';
 import { purgeExpiredSessions } from './services/session.service.js';
 import { logger } from './utils/logger.js';
 
@@ -29,6 +30,7 @@ const purgeTimer = setInterval(
   60 * 60 * 1000,
 );
 purgeTimer.unref();
+startPaymentBackup();
 
 async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Shutting down');

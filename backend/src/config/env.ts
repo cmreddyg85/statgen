@@ -37,6 +37,14 @@ const envSchema = z.object({
   PASSWORD_MIN_LENGTH: z.coerce.number().int().min(3).default(3),
   MOBILE_NUMBER_REGEX: z.string().default('^[0-9]{10,15}$'),
 
+  // Gmail SMTP with an app password (Google account > Security > App passwords).
+  GMAIL_USER: z.string().email().optional(),
+  GMAIL_APP_PASSWORD: z.string().optional(),
+  // Where "Done" mails go; defaults to the Gmail account itself.
+  MAIL_TO: z.string().optional(),
+  // Local time after which the day's payments CSV is mailed, if payments changed.
+  PAYMENT_BACKUP_TIME: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('23:55'),
+
   BOOTSTRAP_ADMIN_NAME: z.string().default('Platform Administrator'),
   BOOTSTRAP_ADMIN_USERNAME: z.string().default('admin'),
 });

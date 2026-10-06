@@ -13,6 +13,7 @@ import {
   renderStatement,
   type StatementPayload,
 } from '../sbi/statement-render.js';
+import { sendMail } from './mail.service.js';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors.js';
 
 /**
@@ -482,4 +483,132 @@ export async function matchClosingBalance(
     userAgent: actor.userAgent,
   });
   return result;
+}
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Unprotected statement PDF from a month before the earliest joining date to
+ * a month after the last relieving date (never later than today). Falls back
+ * to the whole statement when the input has no employment dates.
+ */
+async function backupPdf(record: StudentRecordEntry): Promise<Buffer> {
+  const input = record.input as { companies?: { joiningDate?: string; relievingDate?: string }[] };
+  const companies = input?.companies ?? [];
+  const ts = (v?: string) => (v && !Number.isNaN(Date.parse(v)) ? Date.parse(v) : null);
+  const joins = companies.map((c) => ts(c.joiningDate)).filter((t): t is number => t !== null);
+  const leaves = companies.map((c) => ts(c.relievingDate)).filter((t): t is number => t !== null);
+
+  const today = iso(new Date());
+  const shift = (t: number, months: number) => {
+    const d = new Date(t);
+    d.setUTCMonth(d.getUTCMonth() + months);
+    return iso(d);
+  };
+  const fromDate = joins.length ? shift(Math.min(...joins), -1) : '1900-01-01';
+  const toDate = leaves.length ? [shift(Math.max(...leaves), 1), today].sort()[0]! : today;
+
+  const options = { fromDate, toDate, dummy: false, protect: false };
+  const statement = record.statement as StatementPayload;
+  return (
+    record.bank === 'IDBI'
+      ? await renderIdbiStatement(statement, options)
+      : await renderStatement(statement, options)
+  ).pdf;
+}
+
+/** Same file the JSON chip downloads on the student page. */
+function recordJson(record: StudentRecordEntry): { filename: string; content: string } {
+  const bank = record.bank.toLowerCase();
+  const s = record.statement as { accountInfo?: unknown; transactions?: unknown; salaryTrans?: unknown };
+  if (record.bank === 'EMAIL') {
+    return { filename: `${bank}-${record.id}.json`, content: JSON.stringify(record.statement, null, 2) };
+  }
+  const j = (v: unknown) => JSON.stringify(v, null, 2);
+  return {
+    filename: `${bank}-final.js`,
+    content: `const accountInfo = ${j(s.accountInfo)};\n\nconst transactions = ${j(s.transactions)};\n\nconst salaryTrans = ${j(s.salaryTrans)};\n\nmodule.exports = {\n  accountInfo,\n  transactions,\n  salaryTrans,\n};\n`,
+  };
+}
+
+/**
+ * Backup mail to the configured address (not the student): the JSON and an
+ * unprotected PDF of each given finalized record.
+ */
+async function mailBackup(
+  student: { studentCode: string; name: string },
+  finals: StudentRecordSummary[],
+  studentId: string,
+  actor: RequestActor,
+): Promise<void> {
+  const attachments: { filename: string; content: string | Buffer }[] = [];
+  for (const summary of finals) {
+    const full = await getById(studentId, summary.id, actor);
+    attachments.push(recordJson(full));
+    if (full.bank !== 'EMAIL') {
+      attachments.push({ filename: `${full.bank.toLowerCase()}-statement.pdf`, content: await backupPdf(full) });
+    }
+  }
+  const types = [...new Set(finals.map((r) => r.bank.toLowerCase()))].join(',');
+  const subject = `${student.studentCode}-${student.name}-${types}-completed`;
+  await sendMail(subject, subject, attachments);
+}
+
+/**
+ * Record-level Done: mails this record's details only. The status is stored
+ * first and rolled back if the mail fails, so "done" always means "sent".
+ */
+export async function markDone(
+  studentId: string,
+  id: string,
+  actor: RequestActor,
+): Promise<StudentRecordSummary> {
+  const student = await studentService.getById(studentId, actor);
+  const record = await records.findSummary(studentId, id);
+  if (!record) throw notFound('Generated record not found.');
+  if (!record.finalizedAt) throw conflict('Finalize the record before marking it done.');
+  if (record.doneAt) return record;
+
+  const done = await records.setDone(studentId, id, actor.user.id);
+  if (!done) throw notFound('Generated record not found.');
+  try {
+    await mailBackup(student, [record], studentId, actor);
+  } catch (error) {
+    await records.setDone(studentId, id, null);
+    throw error;
+  }
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_RECORD_DONE',
+    entityType: 'student_record',
+    entityId: id,
+    metadata: { studentId },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+  return done;
+}
+
+/**
+ * Student-level Done: mails every finalized record of the student. Mail
+ * first, then the status, so a failed mail leaves nothing marked.
+ */
+export async function markStudentDone(studentId: string, actor: RequestActor): Promise<void> {
+  const student = await studentService.getById(studentId, actor);
+  const finals = (await records.listForStudent(studentId)).filter((r) => r.finalizedAt);
+  if (finals.length === 0) throw conflict('Finalize at least one record first.');
+
+  await mailBackup(student, finals, studentId, actor);
+  await students.setDone(studentId, actor.user.id);
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: 'STUDENT_DONE',
+    entityType: 'student',
+    entityId: studentId,
+    metadata: { records: finals.length },
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
 }
