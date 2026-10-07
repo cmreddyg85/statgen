@@ -171,6 +171,20 @@ export function buildSalaryPeriods(form, statementEnd = today()) {
       .filter((hike) => hike.date)
       .sort((first, second) => first.date - second.date);
 
+    // Optional custom last-month salary: credited on exactly this date, in
+    // place of the prorated settlement.
+    const custom = company.lastMonthSalary;
+    const customDate = custom ? parseDate(custom.date) : null;
+    const customAmount = custom ? Number(custom.amount) : 0;
+    if (custom) {
+      if (!customDate || !(customAmount > 0)) {
+        throw invalidDetails(`${label}: custom last month salary needs a date and an amount greater than zero`);
+      }
+      if (customDate < addMonths(relieving, 1)) {
+        throw invalidDetails(`${label}: custom last month salary date must be in a month after the relieving date`);
+      }
+    }
+
     let current = salary;
     let start = addMonths(firstSalaryMonth, 1);
 
@@ -218,11 +232,15 @@ export function buildSalaryPeriods(form, statementEnd = today()) {
     // day worked. A settlement month that has not arrived yet is dropped by
     // the clamp in push().
     if (!withheld) {
-      const settlementMonth = addMonths(relieving, 1);
+      const settlementMonth = customDate ?? addMonths(relieving, 1);
       push(firstDayOfMonth(settlementMonth), lastDayOfMonth(settlementMonth), {
         text,
-        amount: ((current / daysInMonth(relieving)) * relieving.getDate()).toFixed(2),
+        amount: (customDate
+          ? customAmount
+          : (current / daysInMonth(relieving)) * relieving.getDate()
+        ).toFixed(2),
         bankCode,
+        ...(customDate ? { creditDate: formatDate(customDate) } : {}),
       });
     }
 

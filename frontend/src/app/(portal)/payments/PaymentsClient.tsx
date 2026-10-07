@@ -1,23 +1,29 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
-import { formatDateTime } from '@/lib/format';
-import { Badge } from '@/components/Badge';
-import { Button } from '@/components/Button';
-import { ConfirmDialog } from '@/components/Modal';
-import { PageHeader } from '@/components/PageHeader';
-import { EmptyState, ErrorState, LoadingState } from '@/components/States';
-import { useToast } from '@/components/Toast';
-import { PencilIcon, TrashIcon } from '../students/[id]/RecordsTable';
-import { PaymentForm, REPORT_TYPES, type Payment } from './PaymentForm';
+import { useCallback, useEffect, useState } from "react";
+import { ApiError, api } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
+import { Badge } from "@/components/Badge";
+import { Button } from "@/components/Button";
+import { ConfirmDialog } from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
+import { EmptyState, ErrorState, LoadingState } from "@/components/States";
+import { useToast } from "@/components/Toast";
+import { PencilIcon, TrashIcon } from "../students/[id]/RecordsTable";
+import { PaymentForm, REPORT_TYPES, type Payment } from "./PaymentForm";
 
 const rupees = (value: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(value);
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  }).format(value);
 
 /** A date-only value, read as a local date so it never shifts a day. */
 const day = (value: string) =>
-  new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(`${value}T00:00:00`));
+  new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(
+    new Date(`${value}T00:00:00`),
+  );
 
 /** Admin-only: what each student is paying for and what has come in. */
 export function PaymentsClient() {
@@ -32,10 +38,14 @@ export function PaymentsClient() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const result = await api.get<{ payments: Payment[] }>('/payments');
+      const result = await api.get<{ payments: Payment[] }>("/payments");
       setPayments(result.payments);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not load payments.');
+      setError(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not load payments.",
+      );
     }
   }, []);
 
@@ -52,12 +62,19 @@ export function PaymentsClient() {
         `/payments/${payment.id}/live-done`,
         { done },
       );
-      setPayments((current) =>
-        current?.map((row) => (row.id === payment.id ? { ...row, liveDoneAt } : row)) ?? current,
+      setPayments(
+        (current) =>
+          current?.map((row) =>
+            row.id === payment.id ? { ...row, liveDoneAt } : row,
+          ) ?? current,
       );
-      toast.success(done ? 'Marked as live done.' : 'Live done cleared.');
+      toast.success(done ? "Marked as live done." : "Live done cleared.");
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not update the payment.');
+      toast.error(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not update the payment.",
+      );
     } finally {
       setBusyId(null);
     }
@@ -68,11 +85,15 @@ export function PaymentsClient() {
     setDeleteBusy(true);
     try {
       await api.delete(`/payments/${deleting.id}`);
-      toast.success('Payment deleted.');
+      toast.success("Payment deleted.");
       setDeleting(null);
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not delete the payment.');
+      toast.error(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not delete the payment.",
+      );
     } finally {
       setDeleteBusy(false);
     }
@@ -93,7 +114,11 @@ export function PaymentsClient() {
 
       <section className="card">
         {error ? (
-          <ErrorState title="Payments unavailable" message={error} onRetry={load} />
+          <ErrorState
+            title="Payments unavailable"
+            message={error}
+            onRetry={load}
+          />
         ) : !payments ? (
           <LoadingState label="Loading payments…" />
         ) : payments.length === 0 ? (
@@ -109,11 +134,17 @@ export function PaymentsClient() {
                 <tr>
                   <th scope="col">Connected</th>
                   <th scope="col">Student</th>
+                  <th scope="col" className="text-right">
+                    Total amount
+                  </th>
+                  <th scope="col" className="text-right">
+                    Received amount
+                  </th>
+                  <th scope="col" className="text-right">
+                    Pending amount
+                  </th>
                   <th scope="col">Referred by</th>
                   <th scope="col">Reports</th>
-                  <th scope="col" className="text-right">Total amount</th>
-                  <th scope="col" className="text-right">Received amount</th>
-                  <th scope="col" className="text-right">Pending amount</th>
                   <th scope="col" className="col-actions text-right">
                     Actions
                   </th>
@@ -121,48 +152,81 @@ export function PaymentsClient() {
               </thead>
               <tbody>
                 {payments.map((payment) => {
-                  const received = payment.installments.reduce((sum, row) => sum + Number(row.amount), 0);
+                  const received = payment.installments.reduce(
+                    (sum, row) => sum + Number(row.amount),
+                    0,
+                  );
                   const balance = payment.amount - received;
                   return (
-                    <tr key={payment.id} className={payment.liveDoneAt ? 'row-done' : undefined}>
-                      <td data-label="Connected" className="whitespace-nowrap text-[var(--color-muted)]">
+                    <tr
+                      key={payment.id}
+                      className={payment.liveDoneAt ? "row-done" : undefined}
+                    >
+                      <td
+                        data-label="Connected"
+                        className="whitespace-nowrap text-[var(--color-muted)]"
+                      >
                         {day(payment.connectedDate)}
                       </td>
                       <td data-label="Student">
                         <div className="font-medium">{payment.studentName}</div>
-                        <div className="text-xs tabular-nums text-[var(--color-muted)]">{payment.studentCode}</div>
+                        <div className="text-xs tabular-nums text-[var(--color-muted)]">
+                          {payment.studentCode}
+                        </div>
                       </td>
-                      <td data-label="Referred by">{payment.referredBy ?? <span className="text-[var(--color-muted)]">—</span>}</td>
+                      <td
+                        data-label="Total amount"
+                        className="text-right tabular-nums font-medium whitespace-nowrap"
+                      >
+                        {rupees(payment.amount)}
+                      </td>
+                      <td
+                        data-label="Received amount"
+                        className="text-right tabular-nums whitespace-nowrap"
+                      >
+                        {rupees(received)}
+                        {payment.installments.length > 0 && (
+                          <div className="text-xs text-[var(--color-muted)]">
+                            {payment.installments.length} payment
+                            {payment.installments.length > 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        data-label="Pending amount"
+                        className="text-right whitespace-nowrap"
+                      >
+                        {balance <= 0 ? (
+                          <Badge tone="success">
+                            {balance < 0
+                              ? `Over by ${rupees(-balance)}`
+                              : "Paid"}
+                          </Badge>
+                        ) : (
+                          <span className="tabular-nums font-semibold text-[var(--color-danger)]">
+                            {rupees(balance)}
+                          </span>
+                        )}
+                      </td>
+                      <td data-label="Referred by">
+                        {payment.referredBy ?? (
+                          <span className="text-[var(--color-muted)]">—</span>
+                        )}
+                      </td>
                       <td data-label="Reports">
                         <div className="flex flex-wrap gap-1">
                           {payment.reportTypes.length === 0 ? (
                             <span className="text-[var(--color-muted)]">—</span>
                           ) : (
-                            REPORT_TYPES.filter((t) => payment.reportTypes.includes(t.value)).map((t) => (
+                            REPORT_TYPES.filter((t) =>
+                              payment.reportTypes.includes(t.value),
+                            ).map((t) => (
                               <Badge key={t.value} tone="info">
                                 {t.label}
                               </Badge>
                             ))
                           )}
                         </div>
-                      </td>
-                      <td data-label="Total amount" className="text-right tabular-nums font-medium whitespace-nowrap">
-                        {rupees(payment.amount)}
-                      </td>
-                      <td data-label="Received amount" className="text-right tabular-nums whitespace-nowrap">
-                        {rupees(received)}
-                        {payment.installments.length > 0 && (
-                          <div className="text-xs text-[var(--color-muted)]">
-                            {payment.installments.length} payment{payment.installments.length > 1 ? 's' : ''}
-                          </div>
-                        )}
-                      </td>
-                      <td data-label="Pending amount" className="text-right whitespace-nowrap">
-                        {balance <= 0 ? (
-                          <Badge tone="success">{balance < 0 ? `Over by ${rupees(-balance)}` : 'Paid'}</Badge>
-                        ) : (
-                          <span className="tabular-nums font-semibold text-[var(--color-danger)]">{rupees(balance)}</span>
-                        )}
                       </td>
                       <td className="col-actions">
                         <div className="flex items-center justify-end gap-1">
@@ -187,7 +251,13 @@ export function PaymentsClient() {
                               Live Done
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" aria-label="Edit payment" title="Edit" onClick={() => openForm(payment)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Edit payment"
+                            title="Edit"
+                            onClick={() => openForm(payment)}
+                          >
                             <PencilIcon />
                           </Button>
                           <Button
@@ -225,7 +295,7 @@ export function PaymentsClient() {
       <ConfirmDialog
         open={Boolean(deleting)}
         title="Delete payment"
-        message={`This removes the payment for ${deleting?.studentName ?? 'this student'} and every amount recorded against it. This cannot be undone.`}
+        message={`This removes the payment for ${deleting?.studentName ?? "this student"} and every amount recorded against it. This cannot be undone.`}
         confirmLabel="Delete"
         loading={deleteBusy}
         onConfirm={() => void confirmDelete()}

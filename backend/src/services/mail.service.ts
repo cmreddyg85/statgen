@@ -5,6 +5,7 @@ import { badRequest } from '../utils/errors.js';
 export interface MailAttachment {
   filename: string;
   content: string | Buffer;
+  contentType?: string;
 }
 
 /** Sends through Gmail SMTP; throws a 400 when Gmail is not configured. */
@@ -21,6 +22,11 @@ export async function sendMail(subject: string, text: string, attachments: MailA
     to: env.MAIL_TO || env.GMAIL_USER,
     subject,
     text,
-    attachments,
+    // message/rfc822 (.eml) would be shown as a forwarded mail; octet-stream keeps it a file.
+    attachments: attachments.map((a) => ({
+      ...a,
+      contentType: a.contentType ?? (/\.eml$/i.test(a.filename) ? 'application/octet-stream' : undefined),
+      contentDisposition: 'attachment' as const,
+    })),
   });
 }

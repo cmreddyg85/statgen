@@ -367,6 +367,15 @@ export async function listFileIds(recordId: string): Promise<string[]> {
   return rows.map((row) => row.id);
 }
 
+/** Every file stored on an email record. */
+export async function listFiles(recordId: string): Promise<RecordAttachment[]> {
+  const { rows } = await query<{ data: Buffer; name: string; type: string }>(
+    'SELECT data, name, type FROM student_record_files WHERE record_id = $1 ORDER BY name',
+    [recordId],
+  );
+  return rows.map((row) => ({ buffer: row.data, name: row.name, type: row.type }));
+}
+
 export async function findFile(
   studentId: string,
   recordId: string,

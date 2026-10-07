@@ -20,8 +20,11 @@ interface Row {
   id: string; connected_date: string; student_id: string; student_code: string; student_name: string;
   offer_company: string | null; bgv_company: string | null; referred_by: string | null;
   report_types: string[]; amount: string; installments: { date: string; remarks: string; amount: number }[];
-  live_done_at: Date | null; created_by_username: string; created_at: Date; updated_at: Date;
+  live_done_at: Date | string | null; created_by_username: string; created_at: Date | string; updated_at: Date | string;
 }
+
+/** The pool may hand timestamps back as strings or Dates. */
+const stamp = (v: Date | string | null) => (v ? new Date(v).toISOString() : '');
 
 export async function buildPaymentsCsv(): Promise<{ csv: string; count: number }> {
   const { rows } = await query<Row>(
@@ -38,8 +41,8 @@ export async function buildPaymentsCsv(): Promise<{ csv: string; count: number }
     return [
       r.id, r.connected_date, r.student_code, r.student_name, r.offer_company, r.bgv_company,
       r.referred_by, r.report_types.join('|'), r.amount, JSON.stringify(r.installments),
-      r.live_done_at?.toISOString() ?? '', r.created_by_username,
-      r.created_at.toISOString(), r.updated_at.toISOString(),
+      stamp(r.live_done_at), r.created_by_username,
+      stamp(r.created_at), stamp(r.updated_at),
       r.student_id, r.installments.length, paid.toFixed(2), (Number(r.amount) - paid).toFixed(2), last,
     ];
   });

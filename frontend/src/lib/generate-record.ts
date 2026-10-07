@@ -23,6 +23,10 @@ export interface CompanyInput {
   ifsc: string;
   salaryCreditText: string;
   hikes: HikeInput[];
+  /** When false, the last month salary is calculated from the relieving date. */
+  customLastSalary: boolean;
+  lastMonthSalaryDate: string;
+  lastMonthSalary: string;
 }
 
 export interface GenerateRecordInput {
@@ -53,6 +57,9 @@ export const emptyCompany = (): CompanyInput => ({
   ifsc: '',
   salaryCreditText: '',
   hikes: [],
+  customLastSalary: false,
+  lastMonthSalaryDate: '',
+  lastMonthSalary: '',
 });
 
 export const emptyForm = (): GenerateRecordInput => ({
@@ -132,6 +139,17 @@ export function validate(
     }
 
     let previousSalary = isMoney(company.salary) ? money(company.salary) : null;
+    if (company.customLastSalary) {
+      if (!company.lastMonthSalaryDate) {
+        errors[at('lastMonthSalaryDate')] = 'Last month salary date is required.';
+      } else if (company.relievingDate && company.lastMonthSalaryDate.slice(0, 7) <= company.relievingDate.slice(0, 7)) {
+        errors[at('lastMonthSalaryDate')] = 'Date must be in a month after the relieving date.';
+      }
+      if (!isMoney(company.lastMonthSalary) || money(company.lastMonthSalary) <= 0) {
+        errors[at('lastMonthSalary')] = 'Last month salary must be a number greater than zero.';
+      }
+    }
+
     let previousHikeDate = '';
 
     company.hikes.forEach((hike, hikeIndex) => {
@@ -186,6 +204,9 @@ export function toPayload(form: GenerateRecordInput, format: 'SBI' | 'IDBI' = 'S
         date: hike.date,
         salary: Number(hike.salary),
       })),
+      lastMonthSalary: company.customLastSalary
+        ? { date: company.lastMonthSalaryDate, amount: Number(company.lastMonthSalary) }
+        : null,
     })),
   };
 }
@@ -201,6 +222,7 @@ interface StoredPayload {
     ifsc?: string;
     salaryCreditText?: string;
     hikes?: Array<{ date?: string; salary?: number | string }>;
+    lastMonthSalary?: { date?: string; amount?: number | string } | null;
   }>;
   salaryDay?: number | string;
   nextWorkingDay?: boolean;
@@ -228,6 +250,9 @@ export function fromPayload(payload: StoredPayload): GenerateRecordInput {
       date: hike.date ?? '',
       salary: text(hike.salary),
     })),
+    customLastSalary: Boolean(company.lastMonthSalary),
+    lastMonthSalaryDate: company.lastMonthSalary?.date ?? '',
+    lastMonthSalary: text(company.lastMonthSalary?.amount),
   }));
 
   return {

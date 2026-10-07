@@ -4,7 +4,7 @@ import { BANKS, branchesFor, salaryNarration } from "@/lib/banks";
 import type { CompanyInput, Errors, HikeInput } from "@/lib/generate-record";
 import { emptyHike } from "@/lib/generate-record";
 import { Button } from "@/components/Button";
-import { SelectField, TextField } from "@/components/Field";
+import { CheckboxField, SelectField, TextField } from "@/components/Field";
 
 /** One employment period, with its own list of hikes. */
 export function CompanySection({
@@ -209,6 +209,34 @@ export function CompanySection({
                 </Button>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 border-t border-[var(--color-line)] pt-4">
+        <CheckboxField
+          label="Custom Last month salary"
+          description="Credit a fixed amount on a chosen date instead of the amount calculated from the relieving date."
+          checked={company.customLastSalary}
+          onChange={(event) => set("customLastSalary", event.target.checked)}
+        />
+        {company.customLastSalary && (
+          <div className="mt-4 grid gap-4 rounded-lg border border-[var(--color-line)] p-4 sm:grid-cols-2">
+            <TextField
+              label="Last month salary date"
+              type="date"
+              value={company.lastMonthSalaryDate}
+              onChange={(event) => set("lastMonthSalaryDate", event.target.value)}
+              error={at("lastMonthSalaryDate")}
+            />
+            <TextField
+              label="Last month salary amount"
+              inputMode="decimal"
+              placeholder="40000"
+              value={company.lastMonthSalary}
+              onChange={(event) => set("lastMonthSalary", event.target.value)}
+              error={at("lastMonthSalary")}
+            />
           </div>
         )}
       </div>

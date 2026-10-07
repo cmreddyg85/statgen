@@ -492,7 +492,7 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
  * a month after the last relieving date (never later than today). Falls back
  * to the whole statement when the input has no employment dates.
  */
-async function backupPdf(record: StudentRecordEntry): Promise<Buffer> {
+async function backupPdf(record: StudentRecordEntry, password?: string): Promise<Buffer> {
   const input = record.input as { companies?: { joiningDate?: string; relievingDate?: string }[] };
   const companies = input?.companies ?? [];
   const ts = (v?: string) => (v && !Number.isNaN(Date.parse(v)) ? Date.parse(v) : null);
@@ -508,7 +508,7 @@ async function backupPdf(record: StudentRecordEntry): Promise<Buffer> {
   const fromDate = joins.length ? shift(Math.min(...joins), -1) : '1900-01-01';
   const toDate = leaves.length ? [shift(Math.max(...leaves), 1), today].sort()[0]! : today;
 
-  const options = { fromDate, toDate, dummy: false, protect: false };
+  const options = { fromDate, toDate, dummy: false, protect: Boolean(password), password };
   const statement = record.statement as StatementPayload;
   return (
     record.bank === 'IDBI'
@@ -517,16 +517,18 @@ async function backupPdf(record: StudentRecordEntry): Promise<Buffer> {
   ).pdf;
 }
 
-/** Same file the JSON chip downloads on the student page. */
+/**
+ * Same content as the JSON chip's download (const blocks + module.exports),
+ * but named .txt: Gmail rejects .js attachments. Email records are plain JSON.
+ */
 function recordJson(record: StudentRecordEntry): { filename: string; content: string } {
-  const bank = record.bank.toLowerCase();
-  const s = record.statement as { accountInfo?: unknown; transactions?: unknown; salaryTrans?: unknown };
-  if (record.bank === 'EMAIL') {
-    return { filename: `${bank}-${record.id}.json`, content: JSON.stringify(record.statement, null, 2) };
-  }
   const j = (v: unknown) => JSON.stringify(v, null, 2);
+  if (record.bank === 'EMAIL') {
+    return { filename: `email-${record.id}.txt`, content: j(record.statement) };
+  }
+  const s = record.statement as { accountInfo?: unknown; transactions?: unknown; salaryTrans?: unknown };
   return {
-    filename: `${bank}-final.js`,
+    filename: `${record.bank.toLowerCase()}-final.txt`,
     content: `const accountInfo = ${j(s.accountInfo)};\n\nconst transactions = ${j(s.transactions)};\n\nconst salaryTrans = ${j(s.salaryTrans)};\n\nmodule.exports = {\n  accountInfo,\n  transactions,\n  salaryTrans,\n};\n`,
   };
 }
@@ -545,8 +547,25 @@ async function mailBackup(
   for (const summary of finals) {
     const full = await getById(studentId, summary.id, actor);
     attachments.push(recordJson(full));
-    if (full.bank !== 'EMAIL') {
-      attachments.push({ filename: `${full.bank.toLowerCase()}-statement.pdf`, content: await backupPdf(full) });
+    if (full.bank === 'EMAIL') {
+      for (const file of await records.listFiles(full.id)) {
+        attachments.push({ filename: `email-${full.id.slice(0, 8)}-${file.name}`, content: file.buffer });
+      }
+    } else {
+      const bank = full.bank.toLowerCase();
+      attachments.push({ filename: `${bank}-statement.pdf`, content: await backupPdf(full) });
+      // The record's own password: the statement's, else the form's.
+      const password = (
+        (full.statement as StatementPayload).accountInfo?.password ||
+        (full.input as { pdfPassword?: string })?.pdfPassword ||
+        ''
+      ).trim();
+      if (password) {
+        attachments.push({ filename: `${bank}-statement-protected.pdf`, content: await backupPdf(full, password) });
+      }
+      // The page uploaded for extraction.
+      const upload = await records.findAttachment(studentId, full.id);
+      if (upload) attachments.push({ filename: `${bank}-uploaded-${upload.name}`, content: upload.buffer });
     }
   }
   const types = [...new Set(finals.map((r) => r.bank.toLowerCase()))].join(',');

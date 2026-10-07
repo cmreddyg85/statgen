@@ -105,6 +105,7 @@ export function GenerateRecordForm({
         // The email form loads its own record.
         if (record.bank === 'EMAIL') return;
         setForm(fromPayload(record.input));
+        setPdfPassword(String(record.input.statementPassword ?? ''));
         setStoredExtract(record.extract);
         setStoredAttachment(record.attachmentName);
       })
@@ -198,7 +199,13 @@ export function GenerateRecordForm({
       return;
     }
 
-    const payload = { studentId, student: student?.name ?? null, ...toPayload(form, bank as RecordBank) };
+    const payload = {
+      studentId,
+      student: student?.name ?? null,
+      ...toPayload(form, bank as RecordBank),
+      // Saved with the record so editing can re-read the uploaded PDF.
+      statementPassword: pdfPassword,
+    };
 
     setBusy(true);
     try {

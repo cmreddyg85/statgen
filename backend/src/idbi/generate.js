@@ -585,7 +585,10 @@ function generateIdbiTransactions(options = {}) {
       balance -= Number.parseFloat(transaction.amount);
     });
 
-    const salaryDate = getWorkingDay(year, month, salaryDay, nextWorkingDay);
+    // A custom last-month salary carries its own exact credit date.
+    const salaryDate = salary.creditDate
+      ? new Date(...salary.creditDate.split("-").map((n, i) => Number(n) - (i === 1 ? 1 : 0)))
+      : getWorkingDay(year, month, salaryDay, nextWorkingDay);
     let displayDate = salaryDate;
 
     if (salaryDay) {
