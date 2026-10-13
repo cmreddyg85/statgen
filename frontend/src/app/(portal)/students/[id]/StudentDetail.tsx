@@ -46,10 +46,10 @@ export function StudentDetail({ studentId }: { studentId: string }) {
     setDoneBusy(true);
     try {
       await api.post(`/students/${studentId}/done`);
-      toast.success('Student marked done. Mail sent.');
+      toast.success('Sent. Mail sent.');
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not mark the student done.');
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not send the student.');
     } finally {
       setDoneBusy(false);
     }
@@ -125,10 +125,10 @@ export function StudentDetail({ studentId }: { studentId: string }) {
               <Button
                 variant="secondary"
                 loading={doneBusy}
-                title={student.doneAt ? `Done ${formatDateTime(student.doneAt)} — click to resend` : undefined}
+                title={student.doneAt ? `Sent ${formatDateTime(student.doneAt)} — click to resend` : undefined}
                 onClick={() => void markDone()}
               >
-                {student.doneAt ? 'Done ✓' : 'Done'}
+                {student.doneAt ? 'Sent ✓' : 'Send'}
               </Button>
             )}
             <LinkButton href={`/students/${student.id}/generate`}>Generate record</LinkButton>

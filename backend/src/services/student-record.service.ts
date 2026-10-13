@@ -4,7 +4,7 @@ import * as records from '../repositories/student-record.repository.js';
 import * as students from '../repositories/student.repository.js';
 import type { RequestActor, StudentRecordEntry, StudentRecordSummary } from '../types.js';
 import { randomUUID } from 'node:crypto';
-import { buildEmailOutput, type EmailInput } from '../email/output.js';
+import { buildEmailOutput, inOutputOrder, type EmailInput } from '../email/output.js';
 import { generateIdbiTransactions } from '../idbi/generate.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
 import { matchTransactions } from '../statement/match.js';
@@ -492,7 +492,10 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
  * a month after the last relieving date (never later than today). Falls back
  * to the whole statement when the input has no employment dates.
  */
-async function backupPdf(record: StudentRecordEntry, password?: string): Promise<Buffer> {
+export async function backupPdf(
+  record: Pick<StudentRecordEntry, 'bank' | 'statement' | 'input'>,
+  password?: string,
+): Promise<Buffer> {
   const input = record.input as { companies?: { joiningDate?: string; relievingDate?: string }[] };
   const companies = input?.companies ?? [];
   const ts = (v?: string) => (v && !Number.isNaN(Date.parse(v)) ? Date.parse(v) : null);
@@ -517,19 +520,16 @@ async function backupPdf(record: StudentRecordEntry, password?: string): Promise
   ).pdf;
 }
 
-/**
- * Same content as the JSON chip's download (const blocks + module.exports),
- * but named .txt: Gmail rejects .js attachments. Email records are plain JSON.
- */
-function recordJson(record: StudentRecordEntry): { filename: string; content: string } {
+/** Plain quoted JSON, same as the JSON chip's download. */
+export function recordJson(record: Pick<StudentRecordEntry, 'id' | 'bank' | 'statement'>): { filename: string; content: string } {
   const j = (v: unknown) => JSON.stringify(v, null, 2);
   if (record.bank === 'EMAIL') {
-    return { filename: `email-${record.id}.txt`, content: j(record.statement) };
+    return { filename: `email-${record.id}.json`, content: j((record.statement as unknown as Record<string, unknown>[]).map(inOutputOrder)) };
   }
-  const s = record.statement as { accountInfo?: unknown; transactions?: unknown; salaryTrans?: unknown };
+  const { accountInfo, transactions, salaryTrans } = record.statement as Record<string, unknown>;
   return {
-    filename: `${record.bank.toLowerCase()}-final.txt`,
-    content: `const accountInfo = ${j(s.accountInfo)};\n\nconst transactions = ${j(s.transactions)};\n\nconst salaryTrans = ${j(s.salaryTrans)};\n\nmodule.exports = {\n  accountInfo,\n  transactions,\n  salaryTrans,\n};\n`,
+    filename: `${record.bank.toLowerCase()}-final.json`,
+    content: j({ accountInfo, transactions, salaryTrans }),
   };
 }
 

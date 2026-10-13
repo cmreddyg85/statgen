@@ -1,4 +1,6 @@
 import { recordAudit } from './audit.service.js';
+import { sendMail } from './mail.service.js';
+import { backupPdf, recordJson } from './student-record.service.js';
 import * as reports from '../repositories/sbi-report.repository.js';
 import { generateIdbiTransactions } from '../idbi/generate.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
@@ -247,4 +249,54 @@ export async function matchClosingBalance(
     userAgent: actor.userAgent,
   });
   return result;
+}
+
+/**
+ * Send: mails the finalized report's JSON and PDFs, like a student record's
+ * Send. The status is stored first and rolled back if the mail fails, so
+ * "sent" always means sent.
+ */
+export async function send(
+  bank: RecordBank,
+  id: string,
+  actor: RequestActor,
+): Promise<SbiReportSummary> {
+  const report = await getById(bank, id);
+  if (!report.finalizedAt) throw conflict('Finalize the report before sending it.');
+  if (report.doneAt) return report;
+
+  const sent = await reports.setDone(id, actor.user.id);
+  if (!sent) throw notFound('Report not found.');
+  try {
+    const name = (sent.customerName ?? 'report').trim();
+    const file = bank.toLowerCase();
+    const attachments = [
+      recordJson(report),
+      { filename: `${file}-statement.pdf`, content: await backupPdf(report) },
+    ];
+    const password = (
+      (report.statement as StatementPayload).accountInfo?.password ?? ''
+    ).trim();
+    if (password) {
+      attachments.push({
+        filename: `${file}-statement-protected.pdf`,
+        content: await backupPdf(report, password),
+      });
+    }
+    const subject = `${bank}-report-${name}-completed`;
+    await sendMail(subject, subject, attachments);
+  } catch (error) {
+    await reports.setDone(id, null);
+    throw error;
+  }
+
+  await recordAudit({
+    userId: actor.user.id,
+    action: `${bank}_REPORT_SENT`,
+    entityType: 'sbi_report',
+    entityId: id,
+    ipAddress: actor.ipAddress,
+    userAgent: actor.userAgent,
+  });
+  return sent;
 }

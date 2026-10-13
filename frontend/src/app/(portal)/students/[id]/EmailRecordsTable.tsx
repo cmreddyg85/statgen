@@ -85,10 +85,10 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
     setBusyId(record.id);
     try {
       await api.post(`/students/${studentId}/records/${record.id}/done`);
-      toast.success('Marked done. Mail sent.');
+      toast.success('Sent. Mail sent.');
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not mark the record done.');
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not send the record.');
     } finally {
       setBusyId(null);
     }
@@ -236,7 +236,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
                             loading={busyId === record.id}
                             onClick={() => void markDone(record)}
                           >
-                            {record.doneAt ? 'Done ✓' : 'Done'}
+                            {record.doneAt ? 'Sent ✓' : 'Send'}
                           </Button>
                         )}
                         <Button

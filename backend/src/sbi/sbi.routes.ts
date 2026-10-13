@@ -231,6 +231,16 @@ export function reportsRouterFor(bank: RecordBank): Router {
     );
   }
 
+  /** POST /api/v1/sbi/reports/:id/send — mails the finalized report. */
+  reportsRouter.post(
+    '/:id/send',
+    validate(uuidParamSchema, 'params'),
+    asyncHandler(async (req, res) => {
+      const { id } = routeParams<{ id: string }>(req);
+      res.json({ report: await reportService.send(bank, id, getActor(req)) });
+    }),
+  );
+
   /** POST /api/v1/sbi/reports/:id/match-transactions — tops a finalized report up to a closing balance. */
   reportsRouter.post(
     '/:id/match-transactions',

@@ -162,6 +162,8 @@ export interface SbiReportSummary {
   createdAt: string;
   updatedAt: string;
   finalizedAt: string | null;
+  /** Set when an admin sent the finalized report by mail. */
+  doneAt: string | null;
 }
 
 /** The same report with the pasted payload and what was built from it. */

@@ -12,6 +12,7 @@ import { DownloadIcon, EyeIcon, PaperclipIcon } from '@/components/Icon';
 import { Modal, ConfirmDialog } from '@/components/Modal';
 import { ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
+import { parseLoose } from '@/lib/parse-loose';
 import { useSession } from '@/lib/session-context';
 
 /** The JSON panels, in the order they appear as columns. */
@@ -259,7 +260,7 @@ export function RecordsTable({
     if (!panel?.editRecordId || draft === null) return;
     let extract: unknown;
     try {
-      extract = JSON.parse(draft);
+      extract = parseLoose(draft);
     } catch (error) {
       setDraftError(`That is not valid JSON: ${(error as Error).message}`);
       return;
@@ -353,10 +354,10 @@ export function RecordsTable({
     setBusyId(record.id);
     try {
       await api.post(`/students/${studentId}/records/${record.id}/done`);
-      toast.success('Marked done. Mail sent.');
+      toast.success('Sent. Mail sent.');
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not mark the record done.');
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not send the record.');
     } finally {
       setBusyId(null);
     }
@@ -522,7 +523,7 @@ export function RecordsTable({
                           loading={busyId === record.id}
                           onClick={() => void markDone(record)}
                         >
-                          {record.doneAt ? 'Done ✓' : 'Done'}
+                          {record.doneAt ? 'Sent ✓' : 'Send'}
                         </Button>
                       )}
                       <Button

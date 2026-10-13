@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { StatementDialog, downloadStatementJson } from '@/components/StatementDialog';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
+import { parseLoose } from '@/lib/parse-loose';
 
 const SOURCE_LABEL: Record<SbiReportSource, string> = {
   extract: 'Extract details',
@@ -145,6 +146,20 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
       await load();
     } catch (caught) {
       toast.error(caught instanceof ApiError ? caught.message : 'Could not update the report.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  /** Mails the finalized report; only possible once. */
+  const send = async (report: SbiReportSummary) => {
+    setBusyId(report.id);
+    try {
+      await api.post(`${base}/${report.id}/send`);
+      toast.success('Sent. Mail sent.');
+      await load();
+    } catch (caught) {
+      toast.error(caught instanceof ApiError ? caught.message : 'Could not send the report.');
     } finally {
       setBusyId(null);
     }
@@ -288,6 +303,18 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
                     </td>
                     <td className="col-actions">
                       <div className="flex items-center justify-end gap-1">
+                        {report.finalizedAt && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="w-[72px]"
+                            disabled={Boolean(report.doneAt)}
+                            loading={busyId === report.id}
+                            onClick={() => void send(report)}
+                          >
+                            {report.doneAt ? 'Sent ✓' : 'Send'}
+                          </Button>
+                        )}
                         <Button
                           variant={report.finalizedAt ? 'secondary' : 'primary'}
                           size="sm"
@@ -433,7 +460,15 @@ function ReportForm({
     setFormError(null);
     setFieldErrors({});
     try {
-      const body = { source, input };
+      let normalized = input;
+      try {
+        normalized = JSON.stringify(parseLoose(input));
+      } catch (error) {
+        setFieldErrors({ input: `That is not valid JSON: ${(error as Error).message}` });
+        setSaving(false);
+        return;
+      }
+      const body = { source, input: normalized };
       if (report) {
         await api.put(`${base}/${report.id}`, body);
         onSaved('Report updated.');

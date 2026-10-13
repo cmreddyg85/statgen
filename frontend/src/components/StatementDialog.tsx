@@ -39,24 +39,14 @@ const statementFileName = () => {
 const slug = (value: string) =>
   value.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'statement';
 
-/** The data file the generator reads back: three consts, nothing else. */
+/** The statement data as plain quoted JSON. */
 export function downloadStatementJson(statement: SbiStatement | IdbiStatement): void {
   const { accountInfo, transactions, salaryTrans } = statement;
-  const file = `const accountInfo = ${JSON.stringify(accountInfo, null, 2)};
-
-const transactions = ${JSON.stringify(transactions, null, 2)};
-
-const salaryTrans = ${JSON.stringify(salaryTrans, null, 2)};
-
-module.exports = {
-  accountInfo,
-  transactions,
-  salaryTrans,
-};
-`;
   downloadBlob(
-    new Blob([file], { type: 'text/javascript' }),
-    `final-${slug(accountInfo.customerName ?? accountInfo.accountName ?? 'statement')}.js`,
+    new Blob([JSON.stringify({ accountInfo, transactions, salaryTrans }, null, 2)], {
+      type: 'application/json',
+    }),
+    `final-${slug(accountInfo.customerName ?? accountInfo.accountName ?? 'statement')}.json`,
   );
 }
 
