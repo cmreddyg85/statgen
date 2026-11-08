@@ -96,7 +96,7 @@ export function UserForm({ open, user, onClose, onSaved }: UserFormProps) {
       <form id="user-form" onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         {formError && (
           <p
-            className="rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-[var(--color-danger)]"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-danger"
             role="alert"
           >
             {formError}

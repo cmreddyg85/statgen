@@ -46,10 +46,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             key={item.href}
             href={item.href}
             aria-current={active ? 'page' : undefined}
-            className={`flex items-center gap-3 rounded-[8px] px-3 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
               active
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-[var(--color-ink)]'
+                ? 'bg-primary text-white'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-ink'
             }`}
           >
             <NavIcon name={item.icon} />
@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[256px] flex-col border-r border-[var(--color-line)] bg-white lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-white lg:flex">
         <BrandMark />
         {navigation}
         <FooterNote role={user.role} />
@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-slate-900/40"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="animate-in absolute inset-y-0 left-0 flex w-[264px] flex-col border-r border-[var(--color-line)] bg-white shadow-xl">
+          <aside className="animate-in absolute inset-y-0 left-0 flex w-66 flex-col border-r border-line bg-white shadow-xl">
             <BrandMark />
             {navigation}
             <FooterNote role={user.role} />
@@ -86,14 +86,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <div className="lg:pl-[256px]">
-        <header className="sticky top-0 z-20 flex h-[64px] items-center gap-3 border-b border-[var(--color-line)] bg-white/95 px-4 backdrop-blur sm:px-6">
+      <div className="lg:pl-64">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-white/95 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
             aria-label="Open navigation menu"
             aria-expanded={drawerOpen}
-            className="-ml-1 rounded-[8px] p-2 text-[var(--color-muted)] transition-colors hover:bg-slate-100 hover:text-[var(--color-ink)] lg:hidden"
+            className="-ml-1 rounded-lg p-2 text-muted transition-colors hover:bg-slate-100 hover:text-ink lg:hidden"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-semibold">{title}</p>
-            <p className="hidden truncate text-xs text-[var(--color-muted)] sm:block">
+            <p className="hidden truncate text-xs text-muted sm:block">
               {user.role === 'ADMIN' ? 'Administrator' : 'User'} · {user.name}
             </p>
           </div>
@@ -116,7 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <ProfileMenu />
         </header>
 
-        <main className="mx-auto w-full max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8">
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
           {children}
         </main>
       </div>
@@ -127,8 +127,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 function BrandMark() {
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? 'Secure Business Portal';
   return (
-    <div className="flex h-[64px] shrink-0 items-center gap-2.5 border-b border-[var(--color-line)] px-5">
-      <span className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[var(--color-primary)] text-sm font-bold text-white">
+    <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-line px-5">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
         SP
       </span>
       <span className="truncate text-sm font-bold tracking-tight">{appName}</span>
@@ -138,8 +138,8 @@ function BrandMark() {
 
 function FooterNote({ role }: { role: 'ADMIN' | 'USER' }) {
   return (
-    <div className="mt-auto border-t border-[var(--color-line)] px-5 py-4">
-      <p className="text-[11px] leading-relaxed text-[var(--color-muted)]">
+    <div className="mt-auto border-t border-line px-5 py-4">
+      <p className="text-[11px] leading-relaxed text-muted">
         Sessions end automatically after{' '}
         <span className="font-semibold">{role === 'ADMIN' ? '24 hours' : '15 minutes'}</span>.
       </p>

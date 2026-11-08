@@ -100,7 +100,7 @@ export function StudentDetail({ studentId }: { studentId: string }) {
     <>
       <Link
         href="/students"
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-muted hover:text-ink"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -138,7 +138,7 @@ export function StudentDetail({ studentId }: { studentId: string }) {
 
       <div className="grid gap-4">
         <section className="card">
-          <h2 className="border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
+          <h2 className="border-b border-line px-5 py-3.5 text-[15px] font-semibold">
             Student details
           </h2>
           <dl className="grid gap-x-6 gap-y-4 px-5 py-4 sm:grid-cols-2">
@@ -178,7 +178,7 @@ export function StudentDetail({ studentId }: { studentId: string }) {
 function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
         {label}
       </dt>
       <dd className="mt-1 text-sm">{value}</dd>

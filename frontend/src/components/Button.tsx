@@ -8,12 +8,12 @@ type Size = 'sm' | 'md';
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    'bg-[var(--color-primary)] text-white border border-transparent hover:bg-[var(--color-primary-dark)]',
+    'bg-primary text-white border border-transparent hover:bg-primary-dark',
   secondary:
-    'bg-white text-[var(--color-ink)] border border-[var(--color-line)] hover:bg-slate-50',
-  danger: 'bg-[var(--color-danger)] text-white border border-transparent hover:bg-red-800',
+    'bg-white text-ink border border-line hover:bg-slate-50',
+  danger: 'bg-danger text-white border border-transparent hover:bg-red-800',
   ghost:
-    'bg-transparent text-[var(--color-muted)] border border-transparent hover:bg-slate-100 hover:text-[var(--color-ink)]',
+    'bg-transparent text-muted border border-transparent hover:bg-slate-100 hover:text-ink',
 };
 
 const SIZES: Record<Size, string> = {
@@ -22,7 +22,7 @@ const SIZES: Record<Size, string> = {
 };
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 rounded-[8px] font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-60';
 
 function classesFor(variant: Variant, size: Size, extra = ''): string {
   return `${BASE} ${VARIANTS[variant]} ${SIZES[size]} ${extra}`;

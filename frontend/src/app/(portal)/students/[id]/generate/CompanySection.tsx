@@ -35,14 +35,14 @@ export function CompanySection({
     });
 
   return (
-    <div className="rounded-[10px] border border-[var(--color-line)] bg-slate-50/40 px-4 py-4">
+    <div className="rounded-[10px] border border-line bg-slate-50/40 px-4 py-4">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold">Company {index + 1}</h3>
         {removable && (
           <Button
             variant="ghost"
             size="sm"
-            className="text-[var(--color-danger)] hover:bg-red-50"
+            className="text-danger hover:bg-red-50"
             onClick={onRemove}
           >
             Remove
@@ -134,7 +134,7 @@ export function CompanySection({
             onChange={(event) => set("salaryCreditText", event.target.value)}
             error={at("salaryCreditText")}
           />
-          <p className="mt-2 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 font-mono text-[12px] break-all text-[var(--color-ink)]">
+          <p className="mt-2 rounded-lg border border-line bg-white px-3 py-2 font-mono text-[12px] break-all text-ink">
             {salaryNarration(
               company.ifsc,
               company.bank,
@@ -145,11 +145,11 @@ export function CompanySection({
         </div>
       </div>
 
-      <div className="mt-5 border-t border-[var(--color-line)] pt-4">
+      <div className="mt-5 border-t border-line pt-4">
         <div className="mb-3 flex items-center justify-between">
           <h4 className="text-[13px] font-semibold">
             Hikes{" "}
-            <span className="font-normal text-[var(--color-muted)]">
+            <span className="font-normal text-muted">
               ({company.hikes.length})
             </span>
           </h4>
@@ -165,7 +165,7 @@ export function CompanySection({
         </div>
 
         {company.hikes.length === 0 ? (
-          <p className="text-[13px] text-[var(--color-muted)]">
+          <p className="text-[13px] text-muted">
             No hikes added.
           </p>
         ) : (
@@ -173,7 +173,7 @@ export function CompanySection({
             {company.hikes.map((hike, hikeIndex) => (
               <div
                 key={hike.id}
-                className="grid items-start gap-3 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
+                className="grid items-start gap-3 rounded-lg border border-line bg-white px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
               >
                 <TextField
                   label={`Hike ${hikeIndex + 1} date`}
@@ -197,7 +197,7 @@ export function CompanySection({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="mt-6 text-[var(--color-danger)] hover:bg-red-50"
+                  className="mt-6 text-danger hover:bg-red-50"
                   onClick={() =>
                     onChange({
                       ...company,
@@ -213,7 +213,7 @@ export function CompanySection({
         )}
       </div>
 
-      <div className="mt-5 border-t border-[var(--color-line)] pt-4">
+      <div className="mt-5 border-t border-line pt-4">
         <CheckboxField
           label="Custom Last month salary"
           description="Credit a fixed amount on a chosen date instead of the amount calculated from the relieving date."
@@ -221,7 +221,7 @@ export function CompanySection({
           onChange={(event) => set("customLastSalary", event.target.checked)}
         />
         {company.customLastSalary && (
-          <div className="mt-4 grid gap-4 rounded-lg border border-[var(--color-line)] p-4 sm:grid-cols-2">
+          <div className="mt-4 grid gap-4 rounded-lg border border-line p-4 sm:grid-cols-2">
             <TextField
               label="Last month salary date"
               type="date"

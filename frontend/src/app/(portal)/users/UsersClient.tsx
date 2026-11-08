@@ -123,8 +123,8 @@ export function UsersClient() {
       />
 
       <div className="card overflow-hidden">
-        <div className="flex flex-wrap items-end gap-3 border-b border-[var(--color-line)] px-4 py-3">
-          <div className="min-w-[220px] flex-1">
+        <div className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">
+          <div className="min-w-55 flex-1">
             <TextField
               label="Search"
               placeholder="Name or username"
@@ -134,7 +134,7 @@ export function UsersClient() {
           </div>
           <SelectField
             label="Status"
-            className="w-[180px]"
+            className="w-45"
             value={status}
             onChange={(value) => {
               setStatus(value as StatusFilter);
@@ -211,10 +211,10 @@ export function UsersClient() {
                         <td data-label="Name" className="font-medium">
                           {user.name}
                           {isSelf && (
-                            <span className="ml-2 text-xs text-[var(--color-muted)]">(you)</span>
+                            <span className="ml-2 text-xs text-muted">(you)</span>
                           )}
                         </td>
-                        <td data-label="Username" className="text-[var(--color-muted)]">{user.username}</td>
+                        <td data-label="Username" className="text-muted">{user.username}</td>
                         <td data-label="Role">
                           <Badge tone={user.role === 'ADMIN' ? 'info' : 'neutral'}>
                             {user.role === 'ADMIN' ? 'Administrator' : 'User'}
@@ -253,7 +253,7 @@ export function UsersClient() {
                               </Badge>
                             </button>
                           ) : (
-                            <span className="text-[var(--color-muted)]">—</span>
+                            <span className="text-muted">—</span>
                           )}
                         </td>
                         <td className="col-actions">
@@ -279,7 +279,7 @@ export function UsersClient() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-[104px] text-[var(--color-danger)] hover:bg-red-50"
+                                className="w-26 text-danger hover:bg-red-50"
                                 onClick={() => setDeactivating(user)}
                               >
                                 Deactivate
@@ -288,7 +288,7 @@ export function UsersClient() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="w-[104px]"
+                                className="w-26"
                                 loading={actionPending === user.id}
                                 onClick={() => activate(user)}
                               >

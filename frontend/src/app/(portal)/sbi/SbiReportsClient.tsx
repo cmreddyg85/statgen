@@ -251,7 +251,7 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
                       </div>
                     </td>
                     <td data-label="Customer" className="font-medium">
-                      {report.customerName ?? <span className="text-[var(--color-muted)]">—</span>}
+                      {report.customerName ?? <span className="text-muted">—</span>}
                     </td>
                     <td data-label="Details">
                       <div className="chip-row">
@@ -307,7 +307,7 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
                           <Button
                             variant="primary"
                             size="sm"
-                            className="w-[72px]"
+                            className="w-18"
                             disabled={Boolean(report.doneAt)}
                             loading={busyId === report.id}
                             onClick={() => void send(report)}
@@ -318,7 +318,7 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
                         <Button
                           variant={report.finalizedAt ? 'secondary' : 'primary'}
                           size="sm"
-                          className="w-[104px]"
+                          className="w-26"
                           loading={busyId === report.id}
                           onClick={() => void setFinalized(report, !report.finalizedAt)}
                         >
@@ -338,7 +338,7 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-[var(--color-danger)] hover:bg-red-50"
+                          className="text-danger hover:bg-red-50"
                           disabled={Boolean(report.finalizedAt)}
                           title={
                             report.finalizedAt ? 'Unfinalize this report to delete it' : undefined
@@ -390,7 +390,7 @@ export function SbiReportsClient({ bank = 'SBI' }: { bank?: RecordBank }) {
           </>
         }
       >
-        <pre className="max-h-[60vh] overflow-auto rounded-[8px] bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
+        <pre className="max-h-[60vh] overflow-auto rounded-lg bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
           {JSON.stringify(viewing?.json ?? null, null, 2)}
         </pre>
       </Modal>
@@ -502,7 +502,7 @@ function ReportForm({
     >
       {formError && (
         <p
-          className="mb-4 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-[var(--color-danger)]"
+          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-danger"
           role="alert"
         >
           {formError}
@@ -520,13 +520,13 @@ function ReportForm({
                 value={value}
                 checked={source === value}
                 onChange={() => setSource(value)}
-                className="h-4 w-4 accent-[var(--color-primary)]"
+                className="h-4 w-4 accent-primary"
               />
               By {SOURCE_LABEL[value]}
             </label>
           ))}
         </div>
-        <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+        <p className="mt-1.5 text-xs text-muted">
           {source === 'extract'
             ? 'An extract payload: accountInfo plus the salary periods. Transactions are generated from it.'
             : 'A finished statement: accountInfo plus the transactions list, stored as pasted.'}

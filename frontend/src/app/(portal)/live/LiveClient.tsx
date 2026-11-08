@@ -129,14 +129,14 @@ export function LiveClient() {
                 aria-expanded={open === 'students'}
                 onClick={() => setOpen((value) => (value === 'students' ? null : 'students'))}
               >
-                <span className={chosen.length ? '' : 'text-[var(--color-muted)]'}>
+                <span className={chosen.length ? '' : 'text-muted'}>
                   {chosen.length ? `${chosen.length} selected` : 'Select students'}
                 </span>
                 <span aria-hidden="true">▾</span>
               </button>
               {open === 'students' && (
-                <div className="absolute z-20 mt-1 w-full rounded-md border border-[var(--color-line)] bg-white shadow-lg">
-                  <div className="border-b border-[var(--color-line)] p-2">
+                <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white shadow-lg">
+                  <div className="border-b border-line p-2">
                     <input
                       autoFocus
                       className="field-input"
@@ -148,7 +148,7 @@ export function LiveClient() {
                   </div>
                   <ul role="listbox" aria-multiselectable="true" className="max-h-72 overflow-y-auto py-1">
                     {visible.length === 0 ? (
-                      <li className="px-3 py-2 text-sm text-[var(--color-muted)]">
+                      <li className="px-3 py-2 text-sm text-muted">
                         {students.length === 0 ? 'No students with a finalized record.' : 'No matches.'}
                       </li>
                     ) : (
@@ -160,9 +160,9 @@ export function LiveClient() {
                               checked={selected.has(s.id)}
                               onChange={() => toggle(s.id)}
                             />
-                            <span className="tabular-nums text-[var(--color-muted)]">{s.studentCode}</span>
+                            <span className="tabular-nums text-muted">{s.studentCode}</span>
                             <span className="flex-1">{s.name}</span>
-                            <span className="text-xs text-[var(--color-muted)]">{s.banks.join(', ')}</span>
+                            <span className="text-xs text-muted">{s.banks.join(', ')}</span>
                           </label>
                         </li>
                       ))
@@ -181,13 +181,13 @@ export function LiveClient() {
                 aria-expanded={open === 'active'}
                 onClick={() => setOpen((value) => (value === 'active' ? null : 'active'))}
               >
-                <span className={activeStudent ? '' : 'text-[var(--color-muted)]'}>
+                <span className={activeStudent ? '' : 'text-muted'}>
                   {activeStudent ? `${activeStudent.studentCode} — ${activeStudent.name}` : 'None'}
                 </span>
                 <span aria-hidden="true">▾</span>
               </button>
               {open === 'active' && (
-                <div className="absolute z-20 mt-1 w-full rounded-md border border-[var(--color-line)] bg-white shadow-lg">
+                <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white shadow-lg">
                   <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
                     {[null, ...chosen].map((s) => (
                       <li key={s?.id ?? 'none'} role="option" aria-selected={active === (s?.id ?? '')}>
@@ -203,12 +203,12 @@ export function LiveClient() {
                           />
                           {s ? (
                             <>
-                              <span className="tabular-nums text-[var(--color-muted)]">{s.studentCode}</span>
+                              <span className="tabular-nums text-muted">{s.studentCode}</span>
                               <span className="flex-1">{s.name}</span>
-                              <span className="text-xs text-[var(--color-muted)]">{s.banks.join(', ')}</span>
+                              <span className="text-xs text-muted">{s.banks.join(', ')}</span>
                             </>
                           ) : (
-                            <span className="flex-1 text-[var(--color-muted)]">None</span>
+                            <span className="flex-1 text-muted">None</span>
                           )}
                         </label>
                       </li>
@@ -217,7 +217,7 @@ export function LiveClient() {
                 </div>
               )}
             </div>
-            <p className="-mt-2 text-xs text-[var(--color-muted)]">
+            <p className="-mt-2 text-xs text-muted">
               Served by the public APIs when they are called without a student id.
             </p>
 
@@ -229,16 +229,16 @@ export function LiveClient() {
       </section>
       {students && (
         <section className="card mt-5">
-          <h2 className="border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
+          <h2 className="border-b border-line px-5 py-3.5 text-[15px] font-semibold">
             Live now ({liveNow.length})
           </h2>
           {liveNow.length === 0 ? (
-            <p className="px-5 py-4 text-sm text-[var(--color-muted)]">No students are live.</p>
+            <p className="px-5 py-4 text-sm text-muted">No students are live.</p>
           ) : (
-            <ul className="divide-y divide-[var(--color-line)]">
+            <ul className="divide-y divide-line">
               {liveNow.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 px-5 py-2.5 text-sm">
-                  <span className="tabular-nums text-[var(--color-muted)]">{s.studentCode}</span>
+                  <span className="tabular-nums text-muted">{s.studentCode}</span>
                   <span className="flex-1">
                     {s.name}
                     {s.id === savedActive && (
@@ -247,7 +247,7 @@ export function LiveClient() {
                       </span>
                     )}
                   </span>
-                  <span className="text-xs text-[var(--color-muted)]">{s.banks.join(', ')}</span>
+                  <span className="text-xs text-muted">{s.banks.join(', ')}</span>
                 </li>
               ))}
             </ul>

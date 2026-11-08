@@ -6,17 +6,17 @@ import { formatDate } from '@/lib/format';
  * needing horizontal scroll.
  */
 export function DateCell({ value }: { value: string | null | undefined }) {
-  if (!value) return <span className="text-[var(--color-muted)]">—</span>;
+  if (!value) return <span className="text-muted">—</span>;
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return <span className="text-[var(--color-muted)]">—</span>;
+    return <span className="text-muted">—</span>;
   }
 
   const time = new Intl.DateTimeFormat(undefined, { timeStyle: 'short' }).format(date);
 
   return (
-    <div className="whitespace-nowrap text-[var(--color-muted)]">
+    <div className="whitespace-nowrap text-muted">
       <div>{formatDate(value)}</div>
       <div className="text-[11px]">{time}</div>
     </div>

@@ -288,7 +288,7 @@ export function GenerateRecordForm({
     <>
       <Link
         href={`/students/${studentId}`}
-        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+        className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-muted hover:text-ink"
       >
         <svg
           width="14"
@@ -319,7 +319,7 @@ export function GenerateRecordForm({
 
       {formError && (
         <p
-          className="card mb-4 border-red-200 bg-red-50 px-5 py-3 text-[13px] text-[var(--color-danger)]"
+          className="card mb-4 border-red-200 bg-red-50 px-5 py-3 text-[13px] text-danger"
           role="alert"
         >
           {formError}
@@ -339,7 +339,7 @@ export function GenerateRecordForm({
             disabled={Boolean(recordId)}
             className="max-w-xs"
           />
-          <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+          <p className="mt-1.5 text-xs text-muted">
             {recordId
               ? "The bank is fixed once a record is created."
               : bank === "EMAIL"
@@ -356,7 +356,7 @@ export function GenerateRecordForm({
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-[15px] font-semibold">
                   Companies{" "}
-                  <span className="font-normal text-[var(--color-muted)]">
+                  <span className="font-normal text-muted">
                     ({form.companies.length})
                   </span>
                 </h2>
@@ -439,14 +439,14 @@ export function GenerateRecordForm({
                     accept="application/pdf,.pdf"
                     onChange={onFileChange}
                     aria-invalid={documentError ? true : undefined}
-                    className="block w-full cursor-pointer rounded-[8px] border border-[var(--color-line)] bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-[6px] file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-[var(--color-ink)] hover:file:bg-slate-200"
+                    className="block w-full cursor-pointer rounded-lg border border-line bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
                   />
                   {documentError || (submitted && errors.document) ? (
                     <p className="field-error" role="alert">
                       {documentError ?? errors.document}
                     </p>
                   ) : (
-                    <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+                    <p className="mt-1.5 text-xs text-muted">
                       PDF only. Account details are extracted from the first
                       pages.
                       {form.documentName
@@ -460,12 +460,10 @@ export function GenerateRecordForm({
                     <a
                       href={`/api/v1/students/${studentId}/records/${recordId}/attachment`}
                       download={storedAttachment}
-                      className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-primary)] hover:underline"
+                      className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-primary hover:underline"
                     >
                       Download attached PDF
-                      <span className="text-[var(--color-muted)]">
-                        ({storedAttachment})
-                      </span>
+                      <span className="text-muted">({storedAttachment})</span>
                     </a>
                   )}
                 </div>
@@ -503,14 +501,14 @@ export function GenerateRecordForm({
                         setFirstPageError(null);
                         setFirstPage(picked);
                       }}
-                      className="block w-full cursor-pointer rounded-[8px] border border-[var(--color-line)] bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-[6px] file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-[var(--color-ink)] hover:file:bg-slate-200"
+                      className="block w-full cursor-pointer rounded-lg border border-line bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
                     />
                     {firstPageError ? (
                       <p className="field-error" role="alert">
                         {firstPageError}
                       </p>
                     ) : (
-                      <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+                      <p className="mt-1.5 text-xs text-muted">
                         One-page PDF that can be added in front of the
                         downloaded statement.
                         {recordId &&

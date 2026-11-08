@@ -92,7 +92,7 @@ export function UserSessionsDialog({
       ) : (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-[var(--color-muted)]">
+            <span className="text-sm text-muted">
               {sessions.length} active {sessions.length === 1 ? 'session' : 'sessions'}
             </span>
             <Button
@@ -109,7 +109,7 @@ export function UserSessionsDialog({
             return (
               <div
                 key={session.id}
-                className="rounded-[10px] border border-[var(--color-line)] px-4 py-3"
+                className="rounded-[10px] border border-line px-4 py-3"
               >
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="text-sm font-semibold">
@@ -117,7 +117,7 @@ export function UserSessionsDialog({
                     {client.operatingSystem ? ` on ${client.operatingSystem}` : ''}
                   </h3>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-[var(--color-muted)]">
+                    <span className="text-xs text-muted">
                       Session {index + 1} · expires {formatRelative(session.expiresAt)}
                     </span>
                     <Button
@@ -163,11 +163,11 @@ function Row({
 }) {
   return (
     <div>
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted">
         {label}
       </dt>
       <dd className={`mt-0.5 text-[13px] break-all ${mono ? 'font-mono text-[12px]' : ''}`}>
-        {value || <span className="text-[var(--color-muted)]">Not available</span>}
+        {value || <span className="text-muted">Not available</span>}
       </dd>
     </div>
   );

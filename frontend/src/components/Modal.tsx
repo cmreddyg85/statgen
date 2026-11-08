@@ -108,24 +108,24 @@ export function Modal({
         aria-label={title}
         className={`animate-in card my-auto w-full shadow-xl ${
           width === 'sm'
-            ? 'max-w-[480px]'
+            ? 'max-w-120'
             : width === 'lg'
-              ? 'max-w-[900px]'
-              : 'max-w-[640px]'
+              ? 'max-w-225'
+              : 'max-w-160'
         }`}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-[var(--color-line)] px-6 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <div>
             <h2 className="text-base font-semibold">{title}</h2>
             {description && (
-              <p className="mt-0.5 text-[13px] text-[var(--color-muted)]">{description}</p>
+              <p className="mt-0.5 text-[13px] text-muted">{description}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="-mr-2 -mt-1 rounded p-2 text-[var(--color-muted)] hover:bg-slate-100 hover:text-[var(--color-ink)]"
+            className="-mr-2 -mt-1 rounded p-2 text-muted hover:bg-slate-100 hover:text-ink"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <path
@@ -141,7 +141,7 @@ export function Modal({
         <div className="px-6 py-5">{children}</div>
 
         {footer && (
-          <div className="flex justify-end gap-3 border-t border-[var(--color-line)] bg-slate-50/60 px-6 py-4">
+          <div className="flex justify-end gap-3 border-t border-line bg-slate-50/60 px-6 py-4">
             {footer}
           </div>
         )}
@@ -190,7 +190,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p className="text-sm text-[var(--color-ink)]">{message}</p>
+      <p className="text-sm text-ink">{message}</p>
     </Modal>
   );
 }

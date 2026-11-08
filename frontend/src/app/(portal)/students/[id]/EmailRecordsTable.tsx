@@ -126,7 +126,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
 
   return (
     <section className="card">
-      <h2 className="flex items-center gap-2 border-b border-[var(--color-line)] px-5 py-3.5 text-[15px] font-semibold">
+      <h2 className="flex items-center gap-2 border-b border-line px-5 py-3.5 text-[15px] font-semibold">
         Email records
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 tabular-nums">
           {records.length}
@@ -138,7 +138,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
       ) : error ? (
         <ErrorState title="Records unavailable" message={error} onRetry={load} />
       ) : records.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-[var(--color-muted)]">
+        <p className="px-5 py-8 text-center text-sm text-muted">
           No email records yet.
         </p>
       ) : (
@@ -173,11 +173,11 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
                       </div>
                     </td>
                     <td data-label="Subjects">
-                      <ol className="min-w-[160px] max-w-[320px] space-y-1">
+                      <ol className="min-w-40 max-w-xs space-y-1">
                         {emails.map((email, i) => (
                           <li key={i} className="flex gap-2">
-                            <span className="tabular-nums text-[var(--color-muted)]">{i + 1}.</span>
-                            <span className="font-medium break-words">{email.subject}</span>
+                            <span className="tabular-nums text-muted">{i + 1}.</span>
+                            <span className="font-medium wrap-break-word">{email.subject}</span>
                           </li>
                         ))}
                       </ol>
@@ -207,7 +207,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
                     </td>
                     <td data-label="Attachments">
                       {files.length === 0 ? (
-                        <span className="text-[var(--color-muted)]">—</span>
+                        <span className="text-muted">—</span>
                       ) : (
                         <div className="chip-row">
                           {files.map((email) => (
@@ -215,7 +215,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
                               key={email.fileId}
                               href={`/api/v1/students/${studentId}/records/${record.id}/files/${email.fileId}`}
                               download={email.attachmentName ?? undefined}
-                              className="chip max-w-[220px]"
+                              className="chip max-w-55"
                               title={email.attachmentName ?? undefined}
                             >
                               <PaperclipIcon />
@@ -231,7 +231,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
                           <Button
                             variant="primary"
                             size="sm"
-                            className="w-[72px]"
+                            className="w-18"
                             disabled={Boolean(record.doneAt)}
                             loading={busyId === record.id}
                             onClick={() => void markDone(record)}
@@ -242,7 +242,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
                         <Button
                           variant={record.finalizedAt ? 'secondary' : 'primary'}
                           size="sm"
-                          className="w-[104px]"
+                          className="w-26"
                           loading={busyId === record.id}
                           onClick={() => void setFinalized(record, !record.finalizedAt)}
                         >
@@ -274,7 +274,7 @@ export function EmailRecordsTable({ studentId, onChange }: { studentId: string; 
           </Button>
         }
       >
-        <pre className="max-h-[60vh] overflow-auto rounded-[8px] bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
+        <pre className="max-h-[60vh] overflow-auto rounded-lg bg-slate-50 p-4 font-mono text-[12px] leading-relaxed whitespace-pre-wrap break-all">
           {JSON.stringify(panel?.json ?? null, null, 2)}
         </pre>
       </Modal>

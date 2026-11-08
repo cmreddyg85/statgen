@@ -98,7 +98,7 @@ export function UserAuditDialog({
                         <Badge tone="danger">Failed</Badge>
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                    <p className="mt-0.5 text-xs text-muted">
                       {/* Who performed it: the user themselves, or an admin acting on them. */}
                       by {entry.userName ?? 'System'}
                       {entry.entityType ? ` · ${entry.entityType}` : ''}
@@ -106,10 +106,10 @@ export function UserAuditDialog({
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-xs text-[var(--color-muted)]">
+                    <p className="text-xs text-muted">
                       {formatRelative(entry.createdAt)}
                     </p>
-                    <p className="text-[11px] text-[var(--color-muted)]">
+                    <p className="text-[11px] text-muted">
                       {formatDateTime(entry.createdAt)}
                     </p>
                   </div>

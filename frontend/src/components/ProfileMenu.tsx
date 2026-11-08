@@ -45,9 +45,9 @@ export function ProfileMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu for ${user.name}`}
-        className="flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white py-1 pl-1 pr-2.5 transition-colors hover:bg-slate-50"
+        className="flex items-center gap-2 rounded-full border border-line bg-white py-1 pl-1 pr-2.5 transition-colors hover:bg-slate-50"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-primary)] text-[11px] font-bold text-white">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
           {initials(user.name)}
         </span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -66,9 +66,9 @@ export function ProfileMenu() {
           role="menu"
           className="animate-in card absolute right-0 top-[calc(100%+8px)] z-40 w-60 overflow-hidden shadow-lg"
         >
-          <div className="border-b border-[var(--color-line)] px-4 py-3">
+          <div className="border-b border-line px-4 py-3">
             <p className="truncate text-sm font-semibold">{user.name}</p>
-            <p className="truncate text-xs text-[var(--color-muted)]">
+            <p className="truncate text-xs text-muted">
               {user.username} · {user.role === 'ADMIN' ? 'Administrator' : 'User'}
             </p>
           </div>
@@ -80,7 +80,7 @@ export function ProfileMenu() {
                 setOpen(false);
                 setChangingPassword(true);
               }}
-              className="flex w-full items-center gap-2 border-b border-[var(--color-line)] px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-slate-50"
+              className="flex w-full items-center gap-2 border-b border-line px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-slate-50"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <rect
@@ -102,7 +102,7 @@ export function ProfileMenu() {
             role="menuitem"
             onClick={handleLogout}
             disabled={signingOut}
-            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-[var(--color-danger)] transition-colors hover:bg-red-50 disabled:opacity-60"
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-danger transition-colors hover:bg-red-50 disabled:opacity-60"
           >
             {signingOut ? (
               <Spinner />

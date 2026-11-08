@@ -199,7 +199,7 @@ export function PaymentForm({
     >
       <form id="payment-form" onSubmit={(event) => void submit(event)} className="space-y-5">
         {formError && (
-          <p className="rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-[var(--color-danger)]" role="alert">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-danger" role="alert">
             {formError}
           </p>
         )}
@@ -225,18 +225,18 @@ export function PaymentForm({
             >
               {selectedStudent ? (
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="tabular-nums text-[var(--color-muted)]">{selectedStudent.studentCode}</span>
+                  <span className="tabular-nums text-muted">{selectedStudent.studentCode}</span>
                   <span className="truncate">{selectedStudent.name}</span>
-                  {selectedStudent.archived && <span className="shrink-0 text-xs text-[var(--color-muted)]">(archived)</span>}
+                  {selectedStudent.archived && <span className="shrink-0 text-xs text-muted">(archived)</span>}
                 </span>
               ) : (
-                <span className="text-[var(--color-muted)]">{students.length ? 'Select a student' : 'Loading students…'}</span>
+                <span className="text-muted">{students.length ? 'Select a student' : 'Loading students…'}</span>
               )}
               <span aria-hidden="true">▾</span>
             </button>
             {menu === 'student' && (
-              <div className="absolute z-20 mt-1 w-full rounded-md border border-[var(--color-line)] bg-white shadow-lg">
-                <div className="border-b border-[var(--color-line)] p-2">
+              <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white shadow-lg">
+                <div className="border-b border-line p-2">
                   <input
                     autoFocus
                     className="field-input"
@@ -254,7 +254,7 @@ export function PaymentForm({
                 </div>
                 <ul role="listbox" className="max-h-64 overflow-y-auto py-1">
                   {matches.length === 0 ? (
-                    <li className="px-3 py-2 text-sm text-[var(--color-muted)]">
+                    <li className="px-3 py-2 text-sm text-muted">
                       {students.length === 0 ? 'No students.' : 'No matches.'}
                     </li>
                   ) : (
@@ -267,13 +267,13 @@ export function PaymentForm({
                             checked={s.id === studentId}
                             onChange={() => pickStudent(s.id)}
                           />
-                          <span className="tabular-nums text-[var(--color-muted)]">{s.studentCode}</span>
+                          <span className="tabular-nums text-muted">{s.studentCode}</span>
                           <span className="flex-1 truncate">
                             {s.name}
-                            {s.archived && <span className="ml-1 text-xs text-[var(--color-muted)]">(archived)</span>}
+                            {s.archived && <span className="ml-1 text-xs text-muted">(archived)</span>}
                           </span>
                           {s.offerCompany && (
-                            <span className="truncate text-xs text-[var(--color-muted)]">{s.offerCompany}</span>
+                            <span className="truncate text-xs text-muted">{s.offerCompany}</span>
                           )}
                         </label>
                       </li>
@@ -316,14 +316,14 @@ export function PaymentForm({
               aria-expanded={menu === 'types'}
               onClick={() => setMenu((value) => (value === 'types' ? null : 'types'))}
             >
-              <span className={`truncate ${reportTypes.length ? '' : 'text-[var(--color-muted)]'}`}>{typeLabel}</span>
+              <span className={`truncate ${reportTypes.length ? '' : 'text-muted'}`}>{typeLabel}</span>
               <span aria-hidden="true">▾</span>
             </button>
             {menu === 'types' && (
               <ul
                 role="listbox"
                 aria-multiselectable="true"
-                className="absolute z-20 mt-1 w-full rounded-md border border-[var(--color-line)] bg-white py-1 shadow-lg"
+                className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white py-1 shadow-lg"
               >
                 {REPORT_TYPES.map((type) => (
                   <li key={type.value} role="option" aria-selected={reportTypes.includes(type.value)}>
@@ -352,11 +352,11 @@ export function PaymentForm({
           />
         </div>
 
-        <div className="border-t border-[var(--color-line)] pt-4">
+        <div className="border-t border-line pt-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-[13px] font-semibold">
               Payments received{' '}
-              <span className="font-normal text-[var(--color-muted)]">({rows.length})</span>
+              <span className="font-normal text-muted">({rows.length})</span>
             </h3>
             <Button type="button" variant="secondary" size="sm" onClick={() => setRows([...rows, emptyRow()])}>
               Add amount
@@ -364,13 +364,13 @@ export function PaymentForm({
           </div>
 
           {rows.length === 0 ? (
-            <p className="text-[13px] text-[var(--color-muted)]">No amounts received yet.</p>
+            <p className="text-[13px] text-muted">No amounts received yet.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {rows.map((row, index) => (
                 <div
                   key={row.key}
-                  className="grid items-start gap-3 rounded-[8px] border border-[var(--color-line)] bg-slate-50/40 px-3 py-3 sm:grid-cols-[160px_1fr_140px_auto]"
+                  className="grid items-start gap-3 rounded-lg border border-line bg-slate-50/40 px-3 py-3 sm:grid-cols-[160px_1fr_140px_auto]"
                 >
                   <TextField
                     label="Date"
@@ -396,7 +396,7 @@ export function PaymentForm({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="text-[var(--color-danger)] hover:bg-red-50 sm:mt-6"
+                    className="text-danger hover:bg-red-50 sm:mt-6"
                     onClick={() => setRows(rows.filter((_, i) => i !== index))}
                   >
                     Remove

@@ -19,7 +19,7 @@ export function TextField({ label, error, hint, ...props }: TextFieldProps) {
     <div>
       <label className="field-label" htmlFor={id}>
         {label}
-        {props.required && <span className="ml-1 text-[var(--color-danger)]">*</span>}
+        {props.required && <span className="ml-1 text-danger">*</span>}
       </label>
       <div className="relative">
         <input
@@ -35,7 +35,7 @@ export function TextField({ label, error, hint, ...props }: TextFieldProps) {
             type="button"
             onClick={() => setRevealed((value) => !value)}
             aria-pressed={revealed}
-            className="absolute inset-y-0 right-2 my-auto h-7 rounded px-2 text-xs font-semibold text-[var(--color-primary)] hover:bg-blue-50"
+            className="absolute inset-y-0 right-2 my-auto h-7 rounded px-2 text-xs font-semibold text-primary hover:bg-blue-50"
           >
             {revealed ? 'Hide' : 'Show'}
           </button>
@@ -46,7 +46,7 @@ export function TextField({ label, error, hint, ...props }: TextFieldProps) {
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-xs text-[var(--color-muted)]" id={`${id}-hint`}>
+        <p className="mt-1.5 text-xs text-muted" id={`${id}-hint`}>
           {hint}
         </p>
       ) : null}
@@ -67,14 +67,14 @@ export function CheckboxField({ label, description, ...props }: CheckboxFieldPro
         {...props}
         id={id}
         type="checkbox"
-        className="mt-0.5 h-4 w-4 rounded border-[var(--color-line)] accent-[var(--color-primary)]"
+        className="mt-0.5 h-4 w-4 rounded border-line accent-primary"
       />
       <div>
-        <label htmlFor={id} className="text-sm font-medium text-[var(--color-ink)]">
+        <label htmlFor={id} className="text-sm font-medium text-ink">
           {label}
         </label>
         {description && (
-          <p className="text-xs text-[var(--color-muted)]">{description}</p>
+          <p className="text-xs text-muted">{description}</p>
         )}
       </div>
     </div>

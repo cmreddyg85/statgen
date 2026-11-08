@@ -95,14 +95,14 @@ export function ChangePasswordDialog({
       >
         {formError && (
           <p
-            className="rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-[var(--color-danger)]"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-danger"
             role="alert"
           >
             {formError}
           </p>
         )}
 
-        <p className="rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-[var(--color-warning)]">
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-warning">
           Any other devices signed in as you will be signed out. This session stays active.
         </p>
 

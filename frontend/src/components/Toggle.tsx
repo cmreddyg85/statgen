@@ -31,15 +31,15 @@ export function Toggle({
       />
       <label
         htmlFor={id}
-        className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full border transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-primary)] ${
+        className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full border transition-colors peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary ${
           checked
-            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]'
-            : 'border-[var(--color-line)] bg-slate-200'
+            ? 'border-primary bg-primary'
+            : 'border-line bg-slate-200'
         } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
       >
         <span
           className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white transition-all ${
-            checked ? 'left-[18px]' : 'left-0.5'
+            checked ? 'left-4.5' : 'left-0.5'
           }`}
         />
       </label>
@@ -50,7 +50,7 @@ export function Toggle({
         >
           {label}
         </label>
-        {hint && <p className="text-xs text-[var(--color-muted)]">{hint}</p>}
+        {hint && <p className="text-xs text-muted">{hint}</p>}
       </div>
     </div>
   );

@@ -164,13 +164,13 @@ export function PaymentsClient() {
                     >
                       <td
                         data-label="Connected"
-                        className="whitespace-nowrap text-[var(--color-muted)]"
+                        className="whitespace-nowrap text-muted"
                       >
                         {day(payment.connectedDate)}
                       </td>
                       <td data-label="Student">
                         <div className="font-medium">{payment.studentName}</div>
-                        <div className="text-xs tabular-nums text-[var(--color-muted)]">
+                        <div className="text-xs tabular-nums text-muted">
                           {payment.studentCode}
                         </div>
                       </td>
@@ -186,7 +186,7 @@ export function PaymentsClient() {
                       >
                         {rupees(received)}
                         {payment.installments.length > 0 && (
-                          <div className="text-xs text-[var(--color-muted)]">
+                          <div className="text-xs text-muted">
                             {payment.installments.length} payment
                             {payment.installments.length > 1 ? "s" : ""}
                           </div>
@@ -203,20 +203,20 @@ export function PaymentsClient() {
                               : "Paid"}
                           </Badge>
                         ) : (
-                          <span className="tabular-nums font-semibold text-[var(--color-danger)]">
+                          <span className="tabular-nums font-semibold text-danger">
                             {rupees(balance)}
                           </span>
                         )}
                       </td>
                       <td data-label="Referred by">
                         {payment.referredBy ?? (
-                          <span className="text-[var(--color-muted)]">—</span>
+                          <span className="text-muted">—</span>
                         )}
                       </td>
                       <td data-label="Reports">
                         <div className="flex flex-wrap gap-1">
                           {payment.reportTypes.length === 0 ? (
-                            <span className="text-[var(--color-muted)]">—</span>
+                            <span className="text-muted">—</span>
                           ) : (
                             REPORT_TYPES.filter((t) =>
                               payment.reportTypes.includes(t.value),
@@ -234,7 +234,7 @@ export function PaymentsClient() {
                             <Button
                               variant="secondary"
                               size="sm"
-                              className="w-[112px] border-green-200 bg-green-50 text-[var(--color-success)] hover:bg-green-100"
+                              className="w-28 border-green-200 bg-green-50 text-success hover:bg-green-100"
                               title={`Marked ${formatDateTime(payment.liveDoneAt)}. Click to undo.`}
                               loading={busyId === payment.id}
                               onClick={() => void setLiveDone(payment, false)}
@@ -244,7 +244,7 @@ export function PaymentsClient() {
                           ) : (
                             <Button
                               size="sm"
-                              className="w-[112px]"
+                              className="w-28"
                               loading={busyId === payment.id}
                               onClick={() => void setLiveDone(payment, true)}
                             >
@@ -265,7 +265,7 @@ export function PaymentsClient() {
                             size="sm"
                             aria-label="Delete payment"
                             title="Delete"
-                            className="text-[var(--color-danger)] hover:bg-red-50"
+                            className="text-danger hover:bg-red-50"
                             onClick={() => setDeleting(payment)}
                           >
                             <TrashIcon />

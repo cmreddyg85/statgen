@@ -18,11 +18,11 @@ export function Pagination({ page, pageSize, total, totalPages, onPageChange }: 
   const last = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] px-4 py-3">
-      <p className="text-xs text-[var(--color-muted)]">
-        Showing <span className="font-semibold text-[var(--color-ink)]">{first}</span>–
-        <span className="font-semibold text-[var(--color-ink)]">{last}</span> of{' '}
-        <span className="font-semibold text-[var(--color-ink)]">{total}</span>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3">
+      <p className="text-xs text-muted">
+        Showing <span className="font-semibold text-ink">{first}</span>–
+        <span className="font-semibold text-ink">{last}</span> of{' '}
+        <span className="font-semibold text-ink">{total}</span>
       </p>
       <div className="flex items-center gap-2">
         <Button
@@ -33,7 +33,7 @@ export function Pagination({ page, pageSize, total, totalPages, onPageChange }: 
         >
           Previous
         </Button>
-        <span className="px-1 text-xs text-[var(--color-muted)]">
+        <span className="px-1 text-xs text-muted">
           Page {page} of {totalPages}
         </span>
         <Button

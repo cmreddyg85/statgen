@@ -59,15 +59,15 @@ function Tooltip({ x, width, title, rows }: { x: number; width: number; title: s
   const left = Math.min(Math.max(x - 80, 0), Math.max(width - 168, 0));
   return (
     <div
-      className="pointer-events-none absolute top-0 z-10 w-[168px] rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-2 text-xs shadow-lg"
+      className="pointer-events-none absolute top-0 z-10 w-42 rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-lg"
       style={{ left }}
     >
-      <p className="mb-1 font-semibold text-[var(--color-ink)]">{title}</p>
+      <p className="mb-1 font-semibold text-ink">{title}</p>
       {rows.map((row) => (
-        <p key={row.label} className="flex items-center gap-2 text-[var(--color-muted)]">
+        <p key={row.label} className="flex items-center gap-2 text-muted">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
           <span className="flex-1">{row.label}</span>
-          <span className="font-semibold tabular-nums text-[var(--color-ink)]">{row.value}</span>
+          <span className="font-semibold tabular-nums text-ink">{row.value}</span>
         </p>
       ))}
     </div>
@@ -261,7 +261,7 @@ export function BarList({
   empty?: string;
 }) {
   const max = Math.max(1, ...rows.map((row) => row.value));
-  if (rows.length === 0) return <p className="py-6 text-center text-[13px] text-[var(--color-muted)]">{empty}</p>;
+  if (rows.length === 0) return <p className="py-6 text-center text-[13px] text-muted">{empty}</p>;
   return (
     <ul className="space-y-3">
       {rows.map((row) => (
@@ -270,7 +270,7 @@ export function BarList({
             <span className="min-w-0 truncate font-medium">{row.label}</span>
             <span className="shrink-0 tabular-nums font-semibold">{format(row.value)}</span>
           </div>
-          <div className="flex h-2 gap-[2px] overflow-hidden rounded-full bg-slate-100" style={{ width: '100%' }}>
+          <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-slate-100" style={{ width: '100%' }}>
             {row.part !== undefined ? (
               <>
                 <span className="h-full rounded-l-full" style={{ width: `${(row.part / max) * 100}%`, backgroundColor: color }} />
@@ -289,7 +289,7 @@ export function BarList({
 /** A legend: swatch beside ink-colored text, never colored text. */
 export function Legend({ items }: { items: { label: string; color: string }[] }) {
   return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-muted)]">
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
       {items.map((item) => (
         <li key={item.label} className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-[3px]" style={{ backgroundColor: item.color }} />
@@ -324,14 +324,14 @@ export function ChartCard({
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-[15px] font-semibold">{title}</h2>
-          {subtitle && <p className="text-xs text-[var(--color-muted)]">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-muted">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-2">
           {action}
           {table && (
             <button
               type="button"
-              className="rounded-[6px] px-2 py-1 text-xs font-semibold text-[var(--color-muted)] hover:bg-slate-100 hover:text-[var(--color-ink)]"
+              className="rounded-md px-2 py-1 text-xs font-semibold text-muted hover:bg-slate-100 hover:text-ink"
               onClick={() => setAsTable((value) => !value)}
             >
               {asTable ? 'Chart' : 'Table'}
@@ -342,10 +342,10 @@ export function ChartCard({
       {legend && !asTable && <div className="mb-2">{legend}</div>}
       <div className="flex-1">
         {asTable && table ? (
-          <div className="max-h-[260px] overflow-auto">
+          <div className="max-h-65 overflow-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="text-left text-xs text-[var(--color-muted)]">
+                <tr className="text-left text-xs text-muted">
                   {table.columns.map((column, i) => (
                     <th key={column} className={`pb-2 font-semibold ${i ? 'text-right' : ''}`}>
                       {column}
@@ -400,29 +400,29 @@ export function StatTile({
   let delta: ReactNode = null;
   if (current !== undefined && previous !== undefined) {
     if (previous === 0) {
-      delta = current > 0 ? <span className="text-[var(--color-muted)]">New this period</span> : <span className="text-[var(--color-muted)]">No change</span>;
+      delta = current > 0 ? <span className="text-muted">New this period</span> : <span className="text-muted">No change</span>;
     } else {
       const change = ((current - previous) / previous) * 100;
       const good = change === 0 ? null : change > 0 === upIsGood;
       delta = (
-        <span className={good === null ? 'text-[var(--color-muted)]' : good ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}>
+        <span className={good === null ? 'text-muted' : good ? 'text-success' : 'text-danger'}>
           {change > 0 ? '▲' : change < 0 ? '▼' : '•'} {change > 0 ? '+' : ''}
           {Math.round(change)}%
-          <span className="text-[var(--color-muted)]"> vs previous</span>
+          <span className="text-muted"> vs previous</span>
         </span>
       );
     }
   }
   return (
     <div className={`card px-5 py-4 ${hero ? 'bg-gradient-to-br from-blue-50 to-white ring-1 ring-blue-100' : ''}`}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
       <p
-        className={`mt-1.5 font-bold tracking-tight ${hero ? 'text-4xl' : 'text-[28px]'} ${tone === 'danger' ? 'text-[var(--color-danger)]' : 'text-[var(--color-ink)]'}`}
+        className={`mt-1.5 font-bold tracking-tight ${hero ? 'text-4xl' : 'text-[28px]'} ${tone === 'danger' ? 'text-danger' : 'text-ink'}`}
       >
         {value}
       </p>
-      <p className="mt-1 text-xs font-medium">{delta ?? <span className="text-[var(--color-muted)]">{hint}</span>}</p>
-      {delta && hint && <p className="text-xs text-[var(--color-muted)]">{hint}</p>}
+      <p className="mt-1 text-xs font-medium">{delta ?? <span className="text-muted">{hint}</span>}</p>
+      {delta && hint && <p className="text-xs text-muted">{hint}</p>}
     </div>
   );
 }

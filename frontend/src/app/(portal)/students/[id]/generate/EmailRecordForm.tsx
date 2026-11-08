@@ -182,7 +182,7 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
       <section className="card px-5 py-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[15px] font-semibold">
-            Emails <span className="font-normal text-[var(--color-muted)]">({emails.length})</span>
+            Emails <span className="font-normal text-muted">({emails.length})</span>
           </h2>
           <Button onClick={() => setEmails([...emails, emptyEmail()])}>Add email</Button>
         </div>
@@ -191,7 +191,7 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
           {emails.map((email, index) => (
             <div
               key={email.key}
-              className="rounded-[10px] border border-[var(--color-line)] bg-slate-50/40 px-4 py-4"
+              className="rounded-[10px] border border-line bg-slate-50/40 px-4 py-4"
             >
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Email {index + 1}</h3>
@@ -199,7 +199,7 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[var(--color-danger)] hover:bg-red-50"
+                    className="text-danger hover:bg-red-50"
                     onClick={() => setEmails(emails.filter((_, i) => i !== index))}
                   >
                     Remove
@@ -278,22 +278,22 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
                     id={`email-file-${email.key}`}
                     type="file"
                     onChange={(event) => setEmail(index, { file: event.target.files?.[0] ?? null })}
-                    className="block w-full cursor-pointer rounded-[8px] border border-[var(--color-line)] bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-[6px] file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-[var(--color-ink)] hover:file:bg-slate-200"
+                    className="block w-full cursor-pointer rounded-lg border border-line bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
                   />
                   {!email.file && email.fileId && recordId && (
-                    <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+                    <p className="mt-1.5 text-xs text-muted">
                       Stored:{' '}
                       <a
                         href={`/api/v1/students/${studentId}/records/${recordId}/files/${email.fileId}`}
                         download={email.attachmentName ?? undefined}
-                        className="font-medium text-[var(--color-primary)] hover:underline"
+                        className="font-medium text-primary hover:underline"
                       >
                         {email.attachmentName}
                       </a>
                       . Pick a file to replace it.{' '}
                       <button
                         type="button"
-                        className="font-medium text-[var(--color-danger)] hover:underline"
+                        className="font-medium text-danger hover:underline"
                         onClick={() => setEmail(index, { fileId: null, attachmentName: null })}
                       >
                         Remove
@@ -303,11 +303,11 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
                 </div>
               </div>
 
-              <div className="mt-5 border-t border-[var(--color-line)] pt-4">
+              <div className="mt-5 border-t border-line pt-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h4 className="text-[13px] font-semibold">
                     Replace text{' '}
-                    <span className="font-normal text-[var(--color-muted)]">
+                    <span className="font-normal text-muted">
                       ({email.replacements.length})
                     </span>
                   </h4>
@@ -323,13 +323,13 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
                 </div>
 
                 {email.replacements.length === 0 ? (
-                  <p className="text-[13px] text-[var(--color-muted)]">No replacements added.</p>
+                  <p className="text-[13px] text-muted">No replacements added.</p>
                 ) : (
                   <div className="flex flex-col gap-3">
                     {email.replacements.map((r, rIndex) => (
                       <div
                         key={r.key}
-                        className="grid items-start gap-3 rounded-[8px] border border-[var(--color-line)] bg-white px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
+                        className="grid items-start gap-3 rounded-lg border border-line bg-white px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
                       >
                         <TextField
                           label="Old text"
@@ -347,7 +347,7 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="mt-6 text-[var(--color-danger)] hover:bg-red-50"
+                          className="mt-6 text-danger hover:bg-red-50"
                           onClick={() =>
                             setEmail(index, {
                               replacements: email.replacements.filter((_, j) => j !== rIndex),

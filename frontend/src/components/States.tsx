@@ -5,8 +5,8 @@ import { Button, Spinner } from './Button';
 
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-[var(--color-muted)]">
-      <Spinner className="h-6 w-6 text-[var(--color-primary)]" />
+    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-muted">
+      <Spinner className="h-6 w-6 text-primary" />
       <p className="text-sm">{label}</p>
     </div>
   );
@@ -34,7 +34,7 @@ export function EmptyState({
         </svg>
       </div>
       <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="max-w-sm text-[13px] text-[var(--color-muted)]">{message}</p>
+      <p className="max-w-sm text-[13px] text-muted">{message}</p>
       {action && <div className="mt-3">{action}</div>}
     </div>
   );
@@ -63,7 +63,7 @@ export function ErrorState({
         </svg>
       </div>
       <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="max-w-md text-[13px] text-[var(--color-muted)]">{message}</p>
+      <p className="max-w-md text-[13px] text-muted">{message}</p>
       {onRetry && (
         <div className="mt-3">
           <Button variant="secondary" size="sm" onClick={onRetry}>
@@ -93,7 +93,7 @@ export function AccessDenied() {
         </svg>
       </div>
       <h2 className="text-lg font-semibold">Access denied</h2>
-      <p className="mt-1 text-sm text-[var(--color-muted)]">
+      <p className="mt-1 text-sm text-muted">
         This area is restricted to administrators. If you believe you should have access,
         contact your administrator.
       </p>

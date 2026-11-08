@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
-import { ApiError, api } from '@/lib/api';
-import { useDebounced } from '@/lib/use-debounced';
-import { useSession } from '@/lib/session-context';
-import type { Paginated, Student, User } from '@/lib/types';
-import { Badge, StatusDot } from '@/components/Badge';
-import { DateCell } from '@/components/DateCell';
-import { Button } from '@/components/Button';
-import { SelectField, TextField } from '@/components/Field';
-import { ConfirmDialog } from '@/components/Modal';
-import { PageHeader } from '@/components/PageHeader';
-import { Pagination } from '@/components/Pagination';
-import { EmptyState, ErrorState, LoadingState } from '@/components/States';
-import { useToast } from '@/components/Toast';
-import { StudentForm } from './StudentForm';
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { ApiError, api } from "@/lib/api";
+import { useDebounced } from "@/lib/use-debounced";
+import { useSession } from "@/lib/session-context";
+import type { Paginated, Student, User } from "@/lib/types";
+import { Badge, StatusDot } from "@/components/Badge";
+import { DateCell } from "@/components/DateCell";
+import { Button } from "@/components/Button";
+import { SelectField, TextField } from "@/components/Field";
+import { ConfirmDialog } from "@/components/Modal";
+import { PageHeader } from "@/components/PageHeader";
+import { Pagination } from "@/components/Pagination";
+import { EmptyState, ErrorState, LoadingState } from "@/components/States";
+import { useToast } from "@/components/Toast";
+import { StudentForm } from "./StudentForm";
 
-const NONE = '__none__';
+const NONE = "__none__";
 
 /** Admin-only: a user is always scoped to active students. */
-type StatusFilter = 'active' | 'archived' | 'all';
+type StatusFilter = "active" | "archived" | "all";
 
 /**
  * Table-first Students screen (PRD 12.4).
@@ -37,13 +37,13 @@ export function StudentsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useState("");
   const search = useDebounced(searchInput.trim());
-  const [status, setStatus] = useState<StatusFilter>('active');
-  const [createdBy, setCreatedBy] = useState('all');
+  const [status, setStatus] = useState<StatusFilter>("active");
+  const [createdBy, setCreatedBy] = useState("all");
   const [owners, setOwners] = useState<User[]>([]);
   // '' = anyone, NONE = students nobody referred, otherwise a referrer's name.
-  const [referredBy, setReferredBy] = useState('');
+  const [referredBy, setReferredBy] = useState("");
   const [referrers, setReferrers] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
@@ -52,13 +52,18 @@ export function StudentsClient() {
   const [deleting, setDeleting] = useState<Student | null>(null);
   const [purging, setPurging] = useState<Student | null>(null);
   // What a permanent delete takes with it; null while it loads.
-  const [impact, setImpact] = useState<{ records: number; payments: number } | null>(null);
+  const [impact, setImpact] = useState<{
+    records: number;
+    payments: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!purging) return;
     setImpact(null);
     api
-      .get<{ records: number; payments: number }>(`/students/${purging.id}/delete-impact`)
+      .get<{ records: number; payments: number }>(
+        `/students/${purging.id}/delete-impact`,
+      )
       .then(setImpact)
       .catch(() => setImpact(null));
   }, [purging]);
@@ -68,14 +73,14 @@ export function StudentsClient() {
   useEffect(() => {
     if (!isAdmin) return;
     api
-      .get<Paginated<User>>('/users', { query: { page: 1, pageSize: 100 } })
+      .get<Paginated<User>>("/users", { query: { page: 1, pageSize: 100 } })
       .then((result) => setOwners(result.items))
       .catch(() => setOwners([]));
   }, [isAdmin]);
 
   useEffect(() => {
     api
-      .get<{ referrers: string[] }>('/students/referrers')
+      .get<{ referrers: string[] }>("/students/referrers")
       .then((result) => setReferrers(result.referrers))
       .catch(() => setReferrers([]));
   }, []);
@@ -85,20 +90,25 @@ export function StudentsClient() {
     setError(null);
     try {
       setData(
-        await api.get<Paginated<Student>>('/students', {
+        await api.get<Paginated<Student>>("/students", {
           query: {
             page,
             pageSize: 20,
             search: search || undefined,
             status: isAdmin ? status : undefined,
-            createdBy: isAdmin && createdBy !== 'all' ? createdBy : undefined,
-            referredBy: referredBy && referredBy !== NONE ? referredBy : undefined,
-            noReferrer: referredBy === NONE ? 'true' : undefined,
+            createdBy: isAdmin && createdBy !== "all" ? createdBy : undefined,
+            referredBy:
+              referredBy && referredBy !== NONE ? referredBy : undefined,
+            noReferrer: referredBy === NONE ? "true" : undefined,
           },
         }),
       );
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Could not load students.');
+      setError(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not load students.",
+      );
     } finally {
       setLoading(false);
     }
@@ -116,10 +126,14 @@ export function StudentsClient() {
     setActionPending(student.id);
     try {
       await api.post(`/students/${student.id}/unarchive`);
-      toast.success('Student restored.');
+      toast.success("Student restored.");
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not restore the student.');
+      toast.error(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not restore the student.",
+      );
     } finally {
       setActionPending(null);
     }
@@ -131,11 +145,15 @@ export function StudentsClient() {
     setActionPending(purging.id);
     try {
       await api.delete(`/students/${purging.id}/permanent`);
-      toast.success('Student deleted.');
+      toast.success("Student deleted.");
       setPurging(null);
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not delete the student.');
+      toast.error(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not delete the student.",
+      );
     } finally {
       setActionPending(null);
     }
@@ -146,17 +164,25 @@ export function StudentsClient() {
     setActionPending(deleting.id);
     try {
       await api.delete(`/students/${deleting.id}`);
-      toast.success('Student archived.');
+      toast.success("Student archived.");
       setDeleting(null);
       await load();
     } catch (caught) {
-      toast.error(caught instanceof ApiError ? caught.message : 'Could not archive student.');
+      toast.error(
+        caught instanceof ApiError
+          ? caught.message
+          : "Could not archive student.",
+      );
     } finally {
       setActionPending(null);
     }
   };
 
-  const filtersApplied = search !== '' || status !== 'active' || createdBy !== 'all' || referredBy !== '';
+  const filtersApplied =
+    search !== "" ||
+    status !== "active" ||
+    createdBy !== "all" ||
+    referredBy !== "";
 
   return (
     <>
@@ -164,8 +190,8 @@ export function StudentsClient() {
         title="Students"
         description={
           isAdmin
-            ? 'Every student record, across all users.'
-            : 'Student records you have created.'
+            ? "Every student record, across all users."
+            : "Student records you have created."
         }
         actions={
           <Button
@@ -180,8 +206,8 @@ export function StudentsClient() {
       />
 
       <div className="card overflow-hidden">
-        <div className="flex flex-wrap items-end gap-3 border-b border-[var(--color-line)] px-4 py-3">
-          <div className="min-w-[220px] flex-1">
+        <div className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">
+          <div className="min-w-55 flex-1">
             <TextField
               label="Search"
               placeholder="ID, name, mobile or company"
@@ -192,30 +218,30 @@ export function StudentsClient() {
           {isAdmin && (
             <SelectField
               label="Status"
-              className="w-[160px]"
+              className="w-40"
               value={status}
               onChange={(value) => {
                 setStatus(value as StatusFilter);
                 setPage(1);
               }}
               options={[
-                { value: 'active', label: 'Active' },
-                { value: 'archived', label: 'Archived' },
-                { value: 'all', label: 'All' },
+                { value: "active", label: "Active" },
+                { value: "archived", label: "Archived" },
+                { value: "all", label: "All" },
               ]}
             />
           )}
           {isAdmin && (
             <SelectField
               label="Created by"
-              className="w-[200px]"
+              className="w-50"
               value={createdBy}
               onChange={(value) => {
                 setCreatedBy(value);
                 setPage(1);
               }}
               options={[
-                { value: 'all', label: 'Anyone' },
+                { value: "all", label: "Anyone" },
                 ...owners.map((owner) => ({
                   value: owner.id,
                   label: `${owner.name} (${owner.username})`,
@@ -225,15 +251,15 @@ export function StudentsClient() {
           )}
           <SelectField
             label="Referred by"
-            className="w-[200px]"
+            className="w-50"
             value={referredBy}
             onChange={(value) => {
               setReferredBy(value);
               setPage(1);
             }}
             options={[
-              { value: '', label: 'Anyone' },
-              { value: NONE, label: 'Blank (not referred)' },
+              { value: "", label: "Anyone" },
+              { value: NONE, label: "Blank (not referred)" },
               ...referrers.map((name) => ({ value: name, label: name })),
             ]}
           />
@@ -241,10 +267,10 @@ export function StudentsClient() {
             <Button
               variant="ghost"
               onClick={() => {
-                setSearchInput('');
-                setStatus('active');
-                setCreatedBy('all');
-                setReferredBy('');
+                setSearchInput("");
+                setStatus("active");
+                setCreatedBy("all");
+                setReferredBy("");
                 setPage(1);
               }}
             >
@@ -259,13 +285,13 @@ export function StudentsClient() {
           <ErrorState message={error} onRetry={load} />
         ) : data && data.items.length === 0 ? (
           <EmptyState
-            title={filtersApplied ? 'No matching students' : 'No students yet'}
+            title={filtersApplied ? "No matching students" : "No students yet"}
             message={
               filtersApplied
-                ? 'No student matches the current search and filters.'
+                ? "No student matches the current search and filters."
                 : isAdmin
-                  ? 'No student records exist yet. Add the first one to get started.'
-                  : 'You have not added any students yet. Add your first record to get started.'
+                  ? "No student records exist yet. Add the first one to get started."
+                  : "You have not added any students yet. Add your first record to get started."
             }
             action={
               filtersApplied ? undefined : (
@@ -290,7 +316,9 @@ export function StudentsClient() {
                     <th scope="col">Name</th>
                     <th scope="col">Referred by</th>
                     <th scope="col">Offer company</th>
-                    {isAdmin && status !== 'active' && <th scope="col">Status</th>}
+                    {isAdmin && status !== "active" && (
+                      <th scope="col">Status</th>
+                    )}
                     {isAdmin && <th scope="col">Created by</th>}
                     <th scope="col">Created</th>
                     <th scope="col" className="col-actions text-right">
@@ -301,18 +329,28 @@ export function StudentsClient() {
                 <tbody>
                   {data.items.map((student) => (
                     <tr key={student.id}>
-                      <td data-label="ID" className="tabular-nums">{student.studentCode}</td>
+                      <td data-label="ID" className="tabular-nums">
+                        {student.studentCode}
+                      </td>
                       <td data-label="Name" className="font-medium">
                         <Link
                           href={`/students/${student.id}`}
-                          className="text-[var(--color-primary)] hover:underline"
+                          className="text-primary hover:underline"
                         >
                           {student.name}
                         </Link>
                       </td>
-                      <td data-label="Referred by">{student.referredBy || <span className="text-[var(--color-muted)]">—</span>}</td>
-                      <td data-label="Offer company">{student.offerCompany ?? <span className="text-[var(--color-muted)]">—</span>}</td>
-                      {isAdmin && status !== 'active' && (
+                      <td data-label="Referred by">
+                        {student.referredBy || (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td data-label="Offer company">
+                        {student.offerCompany ?? (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      {isAdmin && status !== "active" && (
                         <td data-label="Status">
                           {student.archivedAt ? (
                             <Badge tone="neutral">
@@ -328,8 +366,8 @@ export function StudentsClient() {
                         </td>
                       )}
                       {isAdmin && (
-                        <td data-label="Created by" className="text-[var(--color-muted)]">
-                          {student.createdByName ?? '—'}
+                        <td data-label="Created by" className="text-muted">
+                          {student.createdByName ?? "—"}
                         </td>
                       )}
                       <td data-label="Created">
@@ -351,7 +389,7 @@ export function StudentsClient() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="w-[104px]"
+                              className="w-26"
                               disabled={!isAdmin}
                               loading={actionPending === student.id}
                               onClick={() => unarchive(student)}
@@ -362,7 +400,7 @@ export function StudentsClient() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="w-[104px] text-[var(--color-danger)] hover:bg-red-50"
+                              className="w-26 text-danger hover:bg-red-50"
                               onClick={() => setDeleting(student)}
                             >
                               Archive
@@ -372,7 +410,7 @@ export function StudentsClient() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-[var(--color-danger)] hover:bg-red-50"
+                              className="text-danger hover:bg-red-50"
                               onClick={() => setPurging(student)}
                             >
                               Delete
@@ -414,7 +452,7 @@ export function StudentsClient() {
         message={
           deleting
             ? `Archive ${deleting.name}? The record and everything generated for it are kept, and an administrator can restore it.`
-            : ''
+            : ""
         }
         confirmLabel="Archive student"
         loading={actionPending === deleting?.id}
@@ -429,10 +467,10 @@ export function StudentsClient() {
           purging
             ? `Permanently delete ${purging.name}? ${
                 impact
-                  ? `This also deletes ${plural(impact.records, 'generated record')} (with their attached files) and ${plural(impact.payments, 'payment')} (with every amount received).`
-                  : 'This also deletes every record and payment for them.'
+                  ? `This also deletes ${plural(impact.records, "generated record")} (with their attached files) and ${plural(impact.payments, "payment")} (with every amount received).`
+                  : "This also deletes every record and payment for them."
               } This cannot be undone — archive instead if you only want them out of the way.`
-            : ''
+            : ""
         }
         confirmLabel="Delete permanently"
         loading={actionPending === purging?.id}
@@ -443,4 +481,5 @@ export function StudentsClient() {
   );
 }
 
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+const plural = (count: number, noun: string) =>
+  `${count} ${noun}${count === 1 ? "" : "s"}`;

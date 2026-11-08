@@ -114,23 +114,23 @@ export function Dashboard({ isAdmin, name }: { isAdmin: boolean; name: string })
                 <input
                   type="date"
                   aria-label="From"
-                  className="field-input w-[150px]"
+                  className="field-input w-37.5"
                   value={custom.from}
                   max={custom.to}
                   onChange={(event) => setCustom({ ...custom, from: event.target.value })}
                 />
-                <span className="pb-2.5 text-[var(--color-muted)]">–</span>
+                <span className="pb-2.5 text-muted">–</span>
                 <input
                   type="date"
                   aria-label="To"
-                  className="field-input w-[150px]"
+                  className="field-input w-37.5"
                   value={custom.to}
                   min={custom.from}
                   onChange={(event) => setCustom({ ...custom, to: event.target.value })}
                 />
               </>
             )}
-            <div className="w-[170px] [&_.field-label]:sr-only">
+            <div className="w-42.5 [&_.field-label]:sr-only">
               <SelectField
                 label="Date range"
                 value={preset}
@@ -237,7 +237,7 @@ function Body({
               label: (
                 <>
                   {BANK_LABEL[row.bank]}
-                  <span className="ml-2 text-xs font-normal text-[var(--color-muted)]">{row.finalized} finalized</span>
+                  <span className="ml-2 text-xs font-normal text-muted">{row.finalized} finalized</span>
                 </>
               ),
               value: row.total,
@@ -262,20 +262,20 @@ function Body({
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <ChartCard title="Pending dues" subtitle="Largest balances right now" action={<Link href="/payments" className="text-xs font-semibold text-[var(--color-primary)] hover:underline">All payments</Link>}>
+            <ChartCard title="Pending dues" subtitle="Largest balances right now" action={<Link href="/payments" className="text-xs font-semibold text-primary hover:underline">All payments</Link>}>
               {(data.topDues ?? []).length === 0 ? (
-                <p className="py-6 text-center text-[13px] text-[var(--color-muted)]">Nothing pending. 🎉</p>
+                <p className="py-6 text-center text-[13px] text-muted">Nothing pending. 🎉</p>
               ) : (
                 <ul className="divide-y divide-slate-100">
                   {data.topDues!.map((due) => (
                     <li key={due.id} className="flex items-center gap-3 py-2.5">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium">{due.student}</p>
-                        <p className="text-xs text-[var(--color-muted)]">
+                        <p className="text-xs text-muted">
                           <span className="tabular-nums">{due.code}</span> · of {rupees(due.amount)}
                         </p>
                       </div>
-                      <span className="shrink-0 text-[13px] font-semibold tabular-nums text-[var(--color-danger)]">{rupees(due.pending)}</span>
+                      <span className="shrink-0 text-[13px] font-semibold tabular-nums text-danger">{rupees(due.pending)}</span>
                     </li>
                   ))}
                 </ul>
@@ -297,7 +297,7 @@ function Body({
           <div className="grid gap-4 lg:grid-cols-3">
             <ChartCard className="lg:col-span-2" title="Team" subtitle="Students added and records generated this period">
               {(data.team ?? []).length === 0 ? (
-                <p className="py-6 text-center text-[13px] text-[var(--color-muted)]">No activity this period.</p>
+                <p className="py-6 text-center text-[13px] text-muted">No activity this period.</p>
               ) : (
                 <TeamTable rows={data.team!} />
               )}
@@ -307,23 +307,23 @@ function Body({
               title="Recent activity"
               subtitle="Latest changes across the portal"
               action={
-                <button type="button" className="text-xs font-semibold text-[var(--color-primary)] hover:underline" onClick={() => setShowAllActivity(true)}>
+                <button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={() => setShowAllActivity(true)}>
                   View all
                 </button>
               }
             >
               {activity.length === 0 ? (
-                <p className="py-6 text-center text-[13px] text-[var(--color-muted)]">No activity recorded yet.</p>
+                <p className="py-6 text-center text-[13px] text-muted">No activity recorded yet.</p>
               ) : (
-                <ul className="max-h-[280px] divide-y divide-slate-100 overflow-auto">
+                <ul className="max-h-70 divide-y divide-slate-100 overflow-auto">
                   {activity.map((entry) => (
                     <li key={entry.id} className="flex items-center gap-3 py-2">
                       <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] font-medium">{humanizeAction(entry.action)}</p>
-                        <p className="truncate text-xs text-[var(--color-muted)]">{entry.userName ?? 'System'}</p>
+                        <p className="truncate text-xs text-muted">{entry.userName ?? 'System'}</p>
                       </div>
-                      <span className="shrink-0 text-xs text-[var(--color-muted)]">{formatRelative(entry.createdAt)}</span>
+                      <span className="shrink-0 text-xs text-muted">{formatRelative(entry.createdAt)}</span>
                     </li>
                   ))}
                 </ul>
@@ -338,10 +338,10 @@ function Body({
       {!isAdmin && (
         <Link href="/students" className="card group flex items-center justify-between px-5 py-4 transition-shadow hover:shadow-md">
           <span>
-            <span className="block text-sm font-semibold group-hover:text-[var(--color-primary)]">Go to Students</span>
-            <span className="block text-[13px] text-[var(--color-muted)]">Add students and generate their records.</span>
+            <span className="block text-sm font-semibold group-hover:text-primary">Go to Students</span>
+            <span className="block text-[13px] text-muted">Add students and generate their records.</span>
           </span>
-          <span aria-hidden="true" className="text-[var(--color-muted)]">→</span>
+          <span aria-hidden="true" className="text-muted">→</span>
         </Link>
       )}
     </>
@@ -352,9 +352,9 @@ function Body({
 function Snapshot({ label, value, hint, href, tone }: { label: string; value: string; hint: string; href?: string; tone?: 'danger' }) {
   const body = (
     <>
-      <p className="text-xs font-semibold text-[var(--color-muted)]">{label}</p>
-      <p className={`mt-0.5 text-xl font-bold tabular-nums ${tone === 'danger' ? 'text-[var(--color-danger)]' : ''}`}>{value}</p>
-      <p className="text-xs text-[var(--color-muted)]">{hint}</p>
+      <p className="text-xs font-semibold text-muted">{label}</p>
+      <p className={`mt-0.5 text-xl font-bold tabular-nums ${tone === 'danger' ? 'text-danger' : ''}`}>{value}</p>
+      <p className="text-xs text-muted">{hint}</p>
     </>
   );
   const className = 'card block border-dashed bg-slate-50/60 px-4 py-3';
@@ -394,28 +394,28 @@ function PaymentStatus({ rows }: { rows: NonNullable<DashboardData['paymentStatu
       }}
     >
       {count === 0 ? (
-        <p className="py-6 text-center text-[13px] text-[var(--color-muted)]">No payments connected or paid this period.</p>
+        <p className="py-6 text-center text-[13px] text-muted">No payments connected or paid this period.</p>
       ) : (
         <>
           <div className="mb-1.5 flex items-baseline justify-between text-[13px]">
             <span>
-              <span className="font-semibold text-[var(--color-success)]">{rupees(received)}</span>
-              <span className="text-[var(--color-muted)]"> received</span>
+              <span className="font-semibold text-success">{rupees(received)}</span>
+              <span className="text-muted"> received</span>
             </span>
             <span>
-              <span className="font-semibold text-[var(--color-danger)]">{rupees(pending)}</span>
-              <span className="text-[var(--color-muted)]"> pending</span>
+              <span className="font-semibold text-danger">{rupees(pending)}</span>
+              <span className="text-muted"> pending</span>
             </span>
           </div>
           <div
-            className="flex h-3 gap-[2px] overflow-hidden rounded-full bg-slate-100"
+            className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-slate-100"
             role="img"
             aria-label={`${rupees(received)} received, ${rupees(pending)} pending of ${rupees(total)}`}
           >
             {received > 0 && <span style={{ width: `${(received / total) * 100}%`, backgroundColor: 'var(--color-success)' }} />}
             {pending > 0 && <span style={{ width: `${(pending / total) * 100}%`, backgroundColor: 'var(--color-danger)' }} />}
           </div>
-          <p className="mb-4 mt-1.5 text-xs text-[var(--color-muted)]">
+          <p className="mb-4 mt-1.5 text-xs text-muted">
             {Math.round((received / Math.max(total, 1)) * 100)}% of {rupees(total)} across {count} payment{count > 1 ? 's' : ''}
           </p>
           <ul className="space-y-2.5">
@@ -431,14 +431,14 @@ function PaymentStatus({ rows }: { rows: NonNullable<DashboardData['paymentStatu
                 <span className="flex-1">
                   <span className="font-medium">{STATUS[row.status].label}</span>
                   {row.count > 0 && (
-                    <span className="block text-xs text-[var(--color-muted)]">
+                    <span className="block text-xs text-muted">
                       {rupeesShort(row.received)} of {rupeesShort(row.amount)} received
                     </span>
                   )}
                 </span>
                 <span className="text-right font-semibold tabular-nums">
                   {row.count}
-                  <span className="ml-1 text-xs font-normal text-[var(--color-muted)]">{row.count === 1 ? 'payment' : 'payments'}</span>
+                  <span className="ml-1 text-xs font-normal text-muted">{row.count === 1 ? 'payment' : 'payments'}</span>
                 </span>
               </li>
             ))}
@@ -465,7 +465,7 @@ function TeamTable({ rows }: { rows: NonNullable<DashboardData['team']> }) {
       <Legend items={[{ label: 'Students added', color: SERIES[0] }, { label: 'Records generated', color: SERIES[1] }]} />
       <table className="mt-2 w-full text-[13px]">
         <thead>
-          <tr className="text-left text-xs text-[var(--color-muted)]">
+          <tr className="text-left text-xs text-muted">
             <th className="pb-2 font-semibold">Name</th>
             <th className="pb-2 text-right font-semibold">Students</th>
             <th className="pb-2 text-right font-semibold">Records</th>

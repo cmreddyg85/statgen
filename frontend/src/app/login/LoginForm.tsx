@@ -62,7 +62,7 @@ export function LoginForm({ reason, nextPath }: { reason?: string; nextPath?: st
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       {notice && (
         <p
-          className="rounded-[8px] border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-[var(--color-warning)]"
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-warning"
           role="status"
         >
           {notice}
@@ -71,7 +71,7 @@ export function LoginForm({ reason, nextPath }: { reason?: string; nextPath?: st
 
       {formError && (
         <p
-          className="rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-[var(--color-danger)]"
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-danger"
           role="alert"
         >
           {formError}

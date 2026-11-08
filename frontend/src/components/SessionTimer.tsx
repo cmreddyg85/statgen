@@ -11,9 +11,9 @@ import {
 import { useSession } from '@/lib/session-context';
 
 const STATE_STYLES: Record<Exclude<TimerState, 'expired'>, string> = {
-  normal: 'border-[var(--color-line)] bg-white text-[var(--color-ink)]',
-  warning: 'border-amber-300 bg-amber-50 text-[var(--color-warning)]',
-  expiring: 'border-red-300 bg-red-50 text-[var(--color-danger)]',
+  normal: 'border-line bg-white text-ink',
+  warning: 'border-amber-300 bg-amber-50 text-warning',
+  expiring: 'border-red-300 bg-red-50 text-danger',
 };
 
 /**

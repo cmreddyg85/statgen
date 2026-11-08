@@ -4,10 +4,10 @@ type Tone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
 const TONES: Record<Tone, string> = {
   neutral: 'bg-slate-100 text-slate-700 border-slate-200',
-  success: 'bg-green-50 text-[var(--color-success)] border-green-200',
-  warning: 'bg-amber-50 text-[var(--color-warning)] border-amber-200',
-  danger: 'bg-red-50 text-[var(--color-danger)] border-red-200',
-  info: 'bg-blue-50 text-[var(--color-primary-dark)] border-blue-200',
+  success: 'bg-green-50 text-success border-green-200',
+  warning: 'bg-amber-50 text-warning border-amber-200',
+  danger: 'bg-red-50 text-danger border-red-200',
+  info: 'bg-blue-50 text-primary-dark border-blue-200',
 };
 
 export function Badge({
@@ -30,10 +30,10 @@ export function Badge({
 export function StatusDot({ tone }: { tone: Tone }) {
   const colors: Record<Tone, string> = {
     neutral: 'bg-slate-400',
-    success: 'bg-[var(--color-success)]',
-    warning: 'bg-[var(--color-warning)]',
-    danger: 'bg-[var(--color-danger)]',
-    info: 'bg-[var(--color-primary)]',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    danger: 'bg-danger',
+    info: 'bg-primary',
   };
   return <span className={`h-1.5 w-1.5 rounded-full ${colors[tone]}`} aria-hidden="true" />;
 }

@@ -19,20 +19,20 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-[420px]">
+      <div className="w-full max-w-105">
         <div className="mb-6 flex flex-col items-center text-center">
-          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-[12px] bg-[var(--color-primary)] text-base font-bold text-white">
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-base font-bold text-white">
             SP
           </span>
           <h1 className="text-[22px] font-bold tracking-tight">Welcome back</h1>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">Sign in to continue</p>
+          <p className="mt-1 text-sm text-muted">Sign in to continue</p>
         </div>
 
         <div className="card px-6 py-6 shadow-sm">
           <LoginForm reason={reason} nextPath={next} />
         </div>
 
-        <p className="mt-5 text-center text-xs text-[var(--color-muted)]">
+        <p className="mt-5 text-center text-xs text-muted">
           Contact your administrator for access.
         </p>
       </div>
