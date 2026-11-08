@@ -13,6 +13,7 @@ interface RecordRow {
   created_at: string;
   updated_at: string;
   attachment_name: string | null;
+  first_page_name: string | null;
   finalized_at: string | null;
   finalized_by: string | null;
   finalized_by_name: string | null;
@@ -34,6 +35,7 @@ function mapSummary(row: SummaryRow): StudentRecordSummary {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     attachmentName: row.attachment_name,
+    firstPageName: row.first_page_name,
     finalizedAt: row.finalized_at,
     finalizedBy: row.finalized_by,
     finalizedByName: row.finalized_by_name,
@@ -54,7 +56,7 @@ function mapRecord(row: RecordRow): StudentRecordEntry {
 }
 
 const COLUMNS = `r.id, r.student_id, r.bank, r.created_by, u.name AS created_by_name,
-                 r.created_at, r.updated_at, r.attachment_name,
+                 r.created_at, r.updated_at, r.attachment_name, r.first_page_name,
                  r.finalized_at, r.finalized_by, f.name AS finalized_by_name,
                  r.download_released_at, r.download_released_by, r.done_at,
                  -- Small, and the email table lists its subjects and files.
@@ -107,6 +109,8 @@ export interface RecordPayload {
   extract: unknown;
   statement: unknown;
   attachment?: RecordAttachment | null;
+  /** Optional one-page PDF prepended to downloaded statements. */
+  firstPage?: RecordAttachment | null;
 }
 
 export async function insertRecord(
@@ -118,8 +122,8 @@ export async function insertRecord(
     `WITH inserted AS (
        INSERT INTO student_records
          (student_id, input_json, extract_json, statement_json, created_by,
-          attachment, attachment_name, attachment_type, bank)
-       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5, $6, $7, $8, $9)
+          attachment, attachment_name, attachment_type, bank, first_page, first_page_name)
+       VALUES ($1, $2::jsonb, $3::jsonb, $4::jsonb, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *
      )
      SELECT ${COLUMNS} FROM inserted r ${JOINS}`,
@@ -133,6 +137,8 @@ export async function insertRecord(
       payload.attachment?.name ?? null,
       payload.attachment?.type ?? null,
       payload.bank ?? 'SBI',
+      payload.firstPage?.buffer ?? null,
+      payload.firstPage?.name ?? null,
     ],
   );
   return mapSummary(rows[0]!);
@@ -150,7 +156,9 @@ export async function updateRecord(
               -- A new file replaces the stored one; no file keeps it.
               attachment = COALESCE($6, attachment),
               attachment_name = COALESCE($7, attachment_name),
-              attachment_type = COALESCE($8, attachment_type)
+              attachment_type = COALESCE($8, attachment_type),
+              first_page = COALESCE($9, first_page),
+              first_page_name = COALESCE($10, first_page_name)
         WHERE student_id = $1 AND id = $2
         RETURNING *
      )
@@ -164,6 +172,8 @@ export async function updateRecord(
       payload.attachment?.buffer ?? null,
       payload.attachment?.name ?? null,
       payload.attachment?.type ?? null,
+      payload.firstPage?.buffer ?? null,
+      payload.firstPage?.name ?? null,
     ],
   );
   return rows[0] ? mapSummary(rows[0]) : null;
@@ -235,6 +245,15 @@ export async function findAttachment(
     name: row.attachment_name ?? 'statement.pdf',
     type: row.attachment_type ?? 'application/pdf',
   };
+}
+
+/** The optional first-page PDF, fetched only when a download asks for it. */
+export async function findFirstPage(studentId: string, id: string): Promise<Buffer | null> {
+  const { rows } = await query<{ first_page: Buffer | null }>(
+    'SELECT first_page FROM student_records WHERE student_id = $1 AND id = $2',
+    [studentId, id],
+  );
+  return rows[0]?.first_page ?? null;
 }
 
 /** The row without its payloads — enough to decide whether it may change. */

@@ -457,6 +457,17 @@ export function RecordsTable({
                     ) : (
                       <span className="text-[var(--color-muted)]">—</span>
                     )}
+                    {record.firstPageName && (
+                      <a
+                        href={`/api/v1/students/${studentId}/records/${record.id}/first-page`}
+                        download={record.firstPageName}
+                        className="chip mt-1 max-w-[200px]"
+                        title={record.firstPageName}
+                      >
+                        <PaperclipIcon />
+                        <span className="truncate">First page PDF</span>
+                      </a>
+                    )}
                   </td>
                   <td data-label="Downloads">
                     <div className="chip-row">
@@ -728,6 +739,7 @@ export function RecordsTable({
           defaultPassword={pdfFor.record.statement.accountInfo.password}
           dummy={pdfFor.dummy}
           sample={isIdbi}
+          hasFirstPage={Boolean(pdfFor.record.firstPageName)}
           onClose={() => setPdfFor(null)}
         />
       )}

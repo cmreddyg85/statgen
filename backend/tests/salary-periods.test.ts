@@ -41,7 +41,7 @@ describe('buildSalaryPeriods', () => {
     // Idle until the first pay day, then a prorated credit for April.
     expect(periods[0]).toMatchObject({ text: '', amount: '' });
     expect(periods[1]).toMatchObject({ from: '2021-04-01', to: '2021-04-30' });
-    expect(periods[1]?.amount).toBe(((60000 / 31) * 24).toFixed(2));
+    expect(periods[1]?.amount).toBe(Math.round((60000 / 31) * 24).toFixed(2));
     expect(periods[1]?.text).toBe(
       'DEP TFR NEFT-SBIN0001234*SBIN-{{TraNum}}-{{ShortMonth}}{{ShortYear}} SALARY ACME',
     );
@@ -55,7 +55,7 @@ describe('buildSalaryPeriods', () => {
     );
 
     expect(periods[1]).toMatchObject({ from: '2021-05-01' });
-    expect(periods[1]?.amount).toBe(((60000 / 31) * 14 + 60000).toFixed(2));
+    expect(periods[1]?.amount).toBe(Math.round((60000 / 31) * 14 + 60000).toFixed(2));
   });
 
   it('switches amount the month a hike lands', () => {

@@ -1,9 +1,15 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { ApiError, api } from '@/lib/api';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
+import { ApiError, api } from "@/lib/api";
 import {
   emptyCompany,
   emptyForm,
@@ -13,7 +19,7 @@ import {
   type CompanyInput,
   type Errors,
   type GenerateRecordInput,
-} from '@/lib/generate-record';
+} from "@/lib/generate-record";
 import type {
   IdbiStatement,
   RecordBank,
@@ -21,21 +27,23 @@ import type {
   Student,
   StudentRecordBank,
   StudentRecordEntry,
-} from '@/lib/types';
-import { Button, LinkButton } from '@/components/Button';
-import { SelectField, TextField } from '@/components/Field';
-import { PageHeader } from '@/components/PageHeader';
-import { Toggle } from '@/components/Toggle';
-import { useToast } from '@/components/Toast';
-import { CompanySection } from './CompanySection';
-import { EmailRecordForm } from './EmailRecordForm';
+} from "@/lib/types";
+import { Button, LinkButton } from "@/components/Button";
+import { SelectField, TextField } from "@/components/Field";
+import { PageHeader } from "@/components/PageHeader";
+import { Toggle } from "@/components/Toggle";
+import { useToast } from "@/components/Toast";
+import { CompanySection } from "./CompanySection";
+import { EmailRecordForm } from "./EmailRecordForm";
 
-type GenerateResponse = (SbiStatement | IdbiStatement) & { extracted: Record<string, unknown> };
+type GenerateResponse = (SbiStatement | IdbiStatement) & {
+  extracted: Record<string, unknown>;
+};
 
 const BANK_OPTIONS = [
-  { value: 'SBI', label: 'SBI' },
-  { value: 'IDBI', label: 'IDBI (sample PDF)' },
-  { value: 'EMAIL', label: 'Email' },
+  { value: "SBI", label: "SBI" },
+  { value: "IDBI", label: "IDBI (sample PDF)" },
+  { value: "EMAIL", label: "Email" },
 ];
 
 /**
@@ -61,8 +69,8 @@ export function GenerateRecordForm({
 }) {
   const toast = useToast();
   const router = useRouter();
-  const [bank, setBank] = useState<StudentRecordBank>('SBI');
-  const isIdbi = bank === 'IDBI';
+  const [bank, setBank] = useState<StudentRecordBank>("SBI");
+  const isIdbi = bank === "IDBI";
   const [student, setStudent] = useState<Student | null>(null);
   const [form, setForm] = useState<GenerateRecordInput>(emptyForm);
   const [errors, setErrors] = useState<Errors>({});
@@ -72,11 +80,17 @@ export function GenerateRecordForm({
   const [submitted, setSubmitted] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   // SBI statements are usually protected; blank unless the PDF asks for one.
-  const [pdfPassword, setPdfPassword] = useState('');
+  const [pdfPassword, setPdfPassword] = useState("");
   const [busy, setBusy] = useState(false);
   // Kept when editing: lets the statement be rebuilt without the PDF again.
-  const [storedExtract, setStoredExtract] = useState<Record<string, unknown> | null>(null);
+  const [storedExtract, setStoredExtract] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [storedAttachment, setStoredAttachment] = useState<string | null>(null);
+  const [firstPage, setFirstPage] = useState<File | null>(null);
+  const [storedFirstPage, setStoredFirstPage] = useState<string | null>(null);
+  const [firstPageError, setFirstPageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(recordId));
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -98,19 +112,24 @@ export function GenerateRecordForm({
     let active = true;
 
     api
-      .get<{ record: StudentRecordEntry }>(`/students/${studentId}/records/${recordId}`)
+      .get<{ record: StudentRecordEntry }>(
+        `/students/${studentId}/records/${recordId}`,
+      )
       .then(({ record }) => {
         if (!active) return;
         setBank(record.bank);
         // The email form loads its own record.
-        if (record.bank === 'EMAIL') return;
+        if (record.bank === "EMAIL") return;
         setForm(fromPayload(record.input));
-        setPdfPassword(String(record.input.statementPassword ?? ''));
+        setPdfPassword(String(record.input.statementPassword ?? ""));
         setStoredExtract(record.extract);
         setStoredAttachment(record.attachmentName);
+        setStoredFirstPage(record.firstPageName ?? null);
       })
       .catch(() =>
-        active ? setFormError('This record could not be loaded for editing.') : undefined,
+        active
+          ? setFormError("This record could not be loaded for editing.")
+          : undefined,
       )
       .finally(() => (active ? setLoading(false) : undefined));
 
@@ -127,27 +146,32 @@ export function GenerateRecordForm({
   const setCompany = (index: number, next: CompanyInput) =>
     setForm((current) => ({
       ...current,
-      companies: current.companies.map((company, i) => (i === index ? next : company)),
+      companies: current.companies.map((company, i) =>
+        i === index ? next : company,
+      ),
     }));
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const picked = event.target.files?.[0];
     if (!picked) {
       setFile(null);
-      set('documentName', null);
+      set("documentName", null);
       return;
     }
     // accept="application/pdf" is a hint only — a file can still be picked.
-    if (picked.type !== 'application/pdf' && !picked.name.toLowerCase().endsWith('.pdf')) {
-      setDocumentError('Only PDF files are allowed.');
+    if (
+      picked.type !== "application/pdf" &&
+      !picked.name.toLowerCase().endsWith(".pdf")
+    ) {
+      setDocumentError("Only PDF files are allowed.");
       setFile(null);
-      set('documentName', null);
-      if (fileInput.current) fileInput.current.value = '';
+      set("documentName", null);
+      if (fileInput.current) fileInput.current.value = "";
       return;
     }
     setDocumentError(null);
     setFile(picked);
-    set('documentName', picked.name);
+    set("documentName", picked.name);
   };
 
   /** Runs the SBI module: a fresh PDF re-reads the account, otherwise the
@@ -156,25 +180,25 @@ export function GenerateRecordForm({
     async (payload: ReturnType<typeof toPayload> & { studentId: string }) => {
       if (isIdbi && file) {
         const body = new FormData();
-        body.append('file', file);
-        body.append('details', JSON.stringify(payload));
-        if (pdfPassword) body.append('password', pdfPassword);
-        return api.post<GenerateResponse>('/idbi/extract-statement', body);
+        body.append("file", file);
+        body.append("details", JSON.stringify(payload));
+        if (pdfPassword) body.append("password", pdfPassword);
+        return api.post<GenerateResponse>("/idbi/extract-statement", body);
       }
       if (isIdbi) {
-        return api.post<GenerateResponse>('/idbi/generate', {
+        return api.post<GenerateResponse>("/idbi/generate", {
           extract: storedExtract,
           details: payload,
         });
       }
       if (file) {
         const body = new FormData();
-        body.append('file', file);
-        body.append('details', JSON.stringify(payload));
-        if (pdfPassword) body.append('password', pdfPassword);
-        return api.post<GenerateResponse>('/sbi/extract-statement', body);
+        body.append("file", file);
+        body.append("details", JSON.stringify(payload));
+        if (pdfPassword) body.append("password", pdfPassword);
+        return api.post<GenerateResponse>("/sbi/extract-statement", body);
       }
-      return api.post<GenerateResponse>('/sbi/regenerate', {
+      return api.post<GenerateResponse>("/sbi/regenerate", {
         extract: storedExtract,
         details: payload,
       });
@@ -189,13 +213,13 @@ export function GenerateRecordForm({
     setFormError(null);
 
     if (Object.keys(found).length > 0 || documentError) {
-      toast.error('Please correct the highlighted fields.');
+      toast.error("Please correct the highlighted fields.");
       return;
     }
 
     if (!file && !storedExtract) {
-      setDocumentError('Upload the bank statement first page.');
-      toast.error('Please correct the highlighted fields.');
+      setDocumentError("Upload the bank statement first page.");
+      toast.error("Please correct the highlighted fields.");
       return;
     }
 
@@ -216,7 +240,7 @@ export function GenerateRecordForm({
         setFormError(
           `The generated transactions came out in the wrong order (${statement.invalidDates.length} date(s)). Nothing was saved — adjust the dates and generate again.`,
         );
-        toast.error('Generation produced invalid dates. Nothing was saved.');
+        toast.error("Generation produced invalid dates. Nothing was saved.");
         return;
       }
 
@@ -224,13 +248,14 @@ export function GenerateRecordForm({
       // multipart whenever one was picked. An edit that keeps its file sends
       // plain JSON and the stored PDF stays as it is.
       let record: FormData | Record<string, unknown>;
-      if (file) {
+      if (file || firstPage) {
         const body = new FormData();
-        body.append('bank', bank);
-        body.append('file', file);
-        body.append('input', JSON.stringify(payload));
-        body.append('extract', JSON.stringify(extracted));
-        body.append('statement', JSON.stringify(statement));
+        body.append("bank", bank);
+        if (file) body.append("file", file);
+        if (firstPage) body.append("firstPage", firstPage);
+        body.append("input", JSON.stringify(payload));
+        body.append("extract", JSON.stringify(extracted));
+        body.append("statement", JSON.stringify(statement));
         record = body;
       } else {
         record = { bank, input: payload, extract: extracted, statement };
@@ -242,12 +267,16 @@ export function GenerateRecordForm({
         await api.post(`/students/${studentId}/records`, record);
       }
 
-      toast.success(recordId ? 'Record updated.' : 'Record generated and saved.');
+      toast.success(
+        recordId ? "Record updated." : "Record generated and saved.",
+      );
       router.push(`/students/${studentId}`);
       router.refresh();
     } catch (error) {
       const message =
-        error instanceof ApiError ? error.message : 'Could not generate the record.';
+        error instanceof ApiError
+          ? error.message
+          : "Could not generate the record.";
       setFormError(message);
       toast.error(message);
     } finally {
@@ -261,7 +290,13 @@ export function GenerateRecordForm({
         href={`/students/${studentId}`}
         className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-muted)] hover:text-[var(--color-ink)]"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          aria-hidden="true"
+        >
           <path
             d="m14 7-5 5 5 5"
             stroke="currentColor"
@@ -270,20 +305,23 @@ export function GenerateRecordForm({
             strokeLinejoin="round"
           />
         </svg>
-        Back to {student?.name ?? 'student'}
+        Back to {student?.name ?? "student"}
       </Link>
 
       <PageHeader
-        title={recordId ? 'Edit record' : 'Generate record'}
+        title={recordId ? "Edit record" : "Generate record"}
         description={
           student
             ? `Employment and salary details for ${student.name}.`
-            : 'Employment and salary details.'
+            : "Employment and salary details."
         }
       />
 
       {formError && (
-        <p className="card mb-4 border-red-200 bg-red-50 px-5 py-3 text-[13px] text-[var(--color-danger)]" role="alert">
+        <p
+          className="card mb-4 border-red-200 bg-red-50 px-5 py-3 text-[13px] text-[var(--color-danger)]"
+          role="alert"
+        >
           {formError}
         </p>
       )}
@@ -303,33 +341,37 @@ export function GenerateRecordForm({
           />
           <p className="mt-1.5 text-xs text-[var(--color-muted)]">
             {recordId
-              ? 'The bank is fixed once a record is created.'
-              : bank === 'EMAIL'
-                ? 'One section per email: subject, sent time, attachment and text replacements.'
-                : 'The uploaded statement first page supplies the account details. Generated PDFs are sample-marked.'}
+              ? "The bank is fixed once a record is created."
+              : bank === "EMAIL"
+                ? "One section per email: subject, sent time, attachment and text replacements."
+                : "The uploaded statement first page supplies the account details. Generated PDFs are sample-marked."}
           </p>
         </section>
 
-        {bank === 'EMAIL' ? (
+        {bank === "EMAIL" ? (
           <EmailRecordForm studentId={studentId} recordId={recordId} />
         ) : (
           <>
             <section className="card px-5 py-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-[15px] font-semibold">
-                  Companies{' '}
+                  Companies{" "}
                   <span className="font-normal text-[var(--color-muted)]">
                     ({form.companies.length})
                   </span>
                 </h2>
                 <Button
-                  onClick={() => set('companies', [...form.companies, emptyCompany()])}
+                  onClick={() =>
+                    set("companies", [...form.companies, emptyCompany()])
+                  }
                 >
                   Add company
                 </Button>
               </div>
 
-              {errors.companies && <p className="field-error mb-3">{errors.companies}</p>}
+              {errors.companies && (
+                <p className="field-error mb-3">{errors.companies}</p>
+              )}
 
               <div className="flex flex-col gap-4">
                 {form.companies.map((company, index) => (
@@ -341,7 +383,7 @@ export function GenerateRecordForm({
                     onChange={(next) => setCompany(index, next)}
                     onRemove={() =>
                       set(
-                        'companies',
+                        "companies",
                         form.companies.filter((_, i) => i !== index),
                       )
                     }
@@ -353,7 +395,9 @@ export function GenerateRecordForm({
             </section>
 
             <section className="card px-5 py-5">
-              <h2 className="mb-4 text-[15px] font-semibold">Payout and settlement</h2>
+              <h2 className="mb-4 text-[15px] font-semibold">
+                Payout and settlement
+              </h2>
 
               <div className="grid gap-5 sm:grid-cols-2">
                 <TextField
@@ -362,7 +406,7 @@ export function GenerateRecordForm({
                   required
                   value={form.salaryDay}
                   onChange={(event) =>
-                    set('salaryDay', event.target.value.replace(/[^\d]/g, ''))
+                    set("salaryDay", event.target.value.replace(/[^\d]/g, ""))
                   }
                   error={errors.salaryDay}
                   hint="Day of the month, 1–31."
@@ -372,7 +416,7 @@ export function GenerateRecordForm({
                     label="Next working day"
                     hint="If salary day is in weekend then we have to move to next/previous working day"
                     checked={form.nextWorkingDay}
-                    onChange={(checked) => set('nextWorkingDay', checked)}
+                    onChange={(checked) => set("nextWorkingDay", checked)}
                   />
                 </div>
 
@@ -380,7 +424,7 @@ export function GenerateRecordForm({
                   <Toggle
                     label="Is full and final settled amount credited"
                     checked={form.fullAndFinalCredited}
-                    onChange={(checked) => set('fullAndFinalCredited', checked)}
+                    onChange={(checked) => set("fullAndFinalCredited", checked)}
                   />
                 </div>
 
@@ -403,9 +447,13 @@ export function GenerateRecordForm({
                     </p>
                   ) : (
                     <p className="mt-1.5 text-xs text-[var(--color-muted)]">
-                      PDF only. Account details are extracted from the first pages.
-                      {form.documentName ? ` Selected: ${form.documentName}` : ''}
-                      {recordId && ' Leave empty to keep the stored statement page.'}
+                      PDF only. Account details are extracted from the first
+                      pages.
+                      {form.documentName
+                        ? ` Selected: ${form.documentName}`
+                        : ""}
+                      {recordId &&
+                        " Leave empty to keep the stored statement page."}
                     </p>
                   )}
                   {recordId && storedAttachment && (
@@ -415,11 +463,12 @@ export function GenerateRecordForm({
                       className="mt-2 inline-flex items-center gap-1.5 text-[13px] font-medium text-[var(--color-primary)] hover:underline"
                     >
                       Download attached PDF
-                      <span className="text-[var(--color-muted)]">({storedAttachment})</span>
+                      <span className="text-[var(--color-muted)]">
+                        ({storedAttachment})
+                      </span>
                     </a>
                   )}
                 </div>
-
 
                 <div className="sm:col-span-2">
                   <TextField
@@ -431,12 +480,53 @@ export function GenerateRecordForm({
                   />
                 </div>
 
+                {!isIdbi && (
+                  <div className="sm:col-span-2">
+                    <label className="field-label" htmlFor="first-page-pdf">
+                      First page PDF (optional)
+                    </label>
+                    <input
+                      id="first-page-pdf"
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={(event) => {
+                        const picked = event.target.files?.[0] ?? null;
+                        if (
+                          picked &&
+                          !picked.name.toLowerCase().endsWith(".pdf")
+                        ) {
+                          setFirstPageError("Only PDF files are allowed.");
+                          setFirstPage(null);
+                          event.target.value = "";
+                          return;
+                        }
+                        setFirstPageError(null);
+                        setFirstPage(picked);
+                      }}
+                      className="block w-full cursor-pointer rounded-[8px] border border-[var(--color-line)] bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-[6px] file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-[var(--color-ink)] hover:file:bg-slate-200"
+                    />
+                    {firstPageError ? (
+                      <p className="field-error" role="alert">
+                        {firstPageError}
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-xs text-[var(--color-muted)]">
+                        One-page PDF that can be added in front of the
+                        downloaded statement.
+                        {recordId &&
+                          storedFirstPage &&
+                          ` Stored: ${storedFirstPage}. Leave empty to keep it.`}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="sm:col-span-2">
                   <TextField
                     label="Password for generated PDF"
                     type="password"
                     value={form.pdfPassword}
-                    onChange={(event) => set('pdfPassword', event.target.value)}
+                    onChange={(event) => set("pdfPassword", event.target.value)}
                     hint="Optional. Offered when downloading a statement from this record."
                   />
                 </div>
@@ -456,15 +546,17 @@ export function GenerateRecordForm({
                   setFormError(null);
                   setSubmitted(false);
                   setFile(null);
-                  setPdfPassword('');
+                  setFirstPage(null);
+                  setFirstPageError(null);
+                  setPdfPassword("");
                   setStoredExtract(null);
-                  if (fileInput.current) fileInput.current.value = '';
+                  if (fileInput.current) fileInput.current.value = "";
                 }}
               >
                 Reset
               </Button>
               <Button onClick={generate} loading={busy || loading}>
-                {recordId ? 'Save changes' : 'Generate'}
+                {recordId ? "Save changes" : "Generate"}
               </Button>
             </div>
           </>

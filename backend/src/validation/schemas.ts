@@ -235,6 +235,8 @@ export const statementPdfSchema = z
     dummy: z.boolean().default(false),
     /** Encrypt this download. */
     protect: z.boolean().default(false),
+    /** SBI records: prepend the record's uploaded first-page PDF. */
+    includeFirstPage: z.boolean().default(false),
     /**
      * The password to encrypt it with. Defaults to the one saved on the
      * record; whatever is passed here applies to this file only and is never

@@ -106,6 +106,8 @@ export interface StudentRecordSummary {
   updatedAt: string;
   /** File name of the statement page the record was generated from. */
   attachmentName: string | null;
+  /** Optional first page PDF that downloads can prepend (SBI). */
+  firstPageName?: string | null;
   /** Set on the one record per student that has been finalized. */
   finalizedAt: string | null;
   finalizedBy: string | null;

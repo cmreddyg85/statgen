@@ -38,6 +38,8 @@ export function parseDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/** Whole rupees only, no paisa. */
+const money = (value) => Math.round(value).toFixed(2);
 const pad = (value) => String(value).padStart(2, "0");
 const formatDate = (date) =>
   `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -159,7 +161,7 @@ export function buildSalaryPeriods(form, statementEnd = today()) {
     const prorated = (salary / joinMonthDays) * (joinMonthDays - joining.getDate() + 1);
     push(firstDayOfMonth(firstSalaryMonth), lastDayOfMonth(firstSalaryMonth), {
       text,
-      amount: (joining.getDate() <= 15 ? prorated : prorated + salary).toFixed(2),
+      amount: money(joining.getDate() <= 15 ? prorated : prorated + salary),
       bankCode,
     });
 
@@ -199,7 +201,7 @@ export function buildSalaryPeriods(form, statementEnd = today()) {
       }
 
       // A hike agreed in month M is first paid in the credit for month M.
-      push(start, lastDayOfMonth(hike.date), { text, amount: current.toFixed(2), bankCode });
+      push(start, lastDayOfMonth(hike.date), { text, amount: money(current), bankCode });
       current = hike.salary;
       start = addMonths(hike.date, 1);
     }
@@ -224,7 +226,7 @@ export function buildSalaryPeriods(form, statementEnd = today()) {
 
     push(start, lastDayOfMonth(lastPaidMonth), {
       text,
-      amount: current.toFixed(2),
+      amount: money(current),
       bankCode,
     });
 
@@ -235,10 +237,11 @@ export function buildSalaryPeriods(form, statementEnd = today()) {
       const settlementMonth = customDate ?? addMonths(relieving, 1);
       push(firstDayOfMonth(settlementMonth), lastDayOfMonth(settlementMonth), {
         text,
-        amount: (customDate
-          ? customAmount
-          : (current / daysInMonth(relieving)) * relieving.getDate()
-        ).toFixed(2),
+        amount: money(
+          customDate
+            ? customAmount
+            : (current / daysInMonth(relieving)) * relieving.getDate(),
+        ),
         bankCode,
         ...(customDate ? { creditDate: formatDate(customDate) } : {}),
       });

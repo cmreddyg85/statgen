@@ -9,6 +9,7 @@ import { generateIdbiTransactions } from '../idbi/generate.js';
 import { generateSbiTransactions } from '../sbi/generate.js';
 import { matchTransactions } from '../statement/match.js';
 import {
+  prependFirstPage,
   renderIdbiStatement,
   renderStatement,
   type StatementPayload,
@@ -222,6 +223,13 @@ export async function getAttachment(
   return attachment;
 }
 
+export async function getFirstPage(studentId: string, id: string, actor: RequestActor): Promise<Buffer> {
+  await studentService.getById(studentId, actor);
+  const pdf = await records.findFirstPage(studentId, id);
+  if (!pdf) throw notFound('No first page is stored for this record.');
+  return pdf;
+}
+
 /**
  * Finalizing marks the one record that counts for a student, per bank: one
  * SBI and one IDBI record can each be finalized. Within a bank only one at a
@@ -334,6 +342,7 @@ export interface StatementPdfOptions {
   dateOfStatement?: string;
   dummy: boolean;
   protect: boolean;
+  includeFirstPage?: boolean;
   /** Overrides the record's own password, for this download only. */
   password?: string;
 }
@@ -368,7 +377,19 @@ export async function statementPdf(
 
   // Whatever password the dialog sent applies to this file only; nothing is
   // written back to the record.
-  return renderStatement(record.statement as StatementPayload, options);
+  const statement = record.statement as StatementPayload;
+  if (!options.includeFirstPage) return renderStatement(statement, options);
+
+  const firstPage = await records.findFirstPage(studentId, id);
+  if (!firstPage) throw badRequest('This record has no first page PDF uploaded.');
+
+  // Merge before encrypting: an encrypted PDF cannot be appended to.
+  const password = (options.password ?? statement.accountInfo?.password ?? '').trim();
+  if (options.protect && !password) throw badRequest('Enter a password to protect this PDF with.');
+  const rendered = await renderStatement(statement, { ...options, protect: false, password: '' });
+
+  const pdf = await prependFirstPage(firstPage, rendered.pdf, options.protect ? password : '');
+  return { pdf, fileName: rendered.fileName };
 }
 
 /**
@@ -520,7 +541,7 @@ export async function backupPdf(
   ).pdf;
 }
 
-/** Plain quoted JSON, same as the JSON chip's download. */
+/** SBI/IDBI: a CommonJS module (accountInfo, transactions, salaryTrans); email: plain JSON. */
 export function recordJson(record: Pick<StudentRecordEntry, 'id' | 'bank' | 'statement'>): { filename: string; content: string } {
   const j = (v: unknown) => JSON.stringify(v, null, 2);
   if (record.bank === 'EMAIL') {
@@ -528,8 +549,8 @@ export function recordJson(record: Pick<StudentRecordEntry, 'id' | 'bank' | 'sta
   }
   const { accountInfo, transactions, salaryTrans } = record.statement as Record<string, unknown>;
   return {
-    filename: `${record.bank.toLowerCase()}-final.json`,
-    content: j({ accountInfo, transactions, salaryTrans }),
+    filename: `${record.bank.toLowerCase()}-final.js`,
+    content: `const accountInfo = ${j(accountInfo)};\n\nconst transactions = ${j(transactions)};\n\nconst salaryTrans = ${j(salaryTrans)};\n\nmodule.exports = {\n  accountInfo,\n  transactions,\n  salaryTrans,\n};\n`,
   };
 }
 

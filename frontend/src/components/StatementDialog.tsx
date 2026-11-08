@@ -39,14 +39,18 @@ const statementFileName = () => {
 const slug = (value: string) =>
   value.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'statement';
 
-/** The statement data as plain quoted JSON. */
+/** The statement data as a CommonJS module. */
 export function downloadStatementJson(statement: SbiStatement | IdbiStatement): void {
   const { accountInfo, transactions, salaryTrans } = statement;
+  const j = (value: unknown) => JSON.stringify(value, null, 2);
   downloadBlob(
-    new Blob([JSON.stringify({ accountInfo, transactions, salaryTrans }, null, 2)], {
-      type: 'application/json',
-    }),
-    `final-${slug(accountInfo.customerName ?? accountInfo.accountName ?? 'statement')}.json`,
+    new Blob(
+      [
+        `const accountInfo = ${j(accountInfo)};\n\nconst transactions = ${j(transactions)};\n\nconst salaryTrans = ${j(salaryTrans)};\n\nmodule.exports = {\n  accountInfo,\n  transactions,\n  salaryTrans,\n};\n`,
+      ],
+      { type: 'text/javascript' },
+    ),
+    `final-${slug(accountInfo.customerName ?? accountInfo.accountName ?? 'statement')}.js`,
   );
 }
 
@@ -61,6 +65,7 @@ export function StatementDialog({
   defaultPassword = '',
   dummy = false,
   sample = false,
+  hasFirstPage = false,
   onClose,
 }: {
   /** Where to POST the range; the server renders from its own copy. */
@@ -72,12 +77,15 @@ export function StatementDialog({
   dummy?: boolean;
   /** An IDBI-format record: always the SAMPLE-marked layout. */
   sample?: boolean;
+  /** The record has an uploaded first page PDF that can be prepended. */
+  hasFirstPage?: boolean;
   onClose: () => void;
 }) {
   const toast = useToast();
   const bounds = transactions.map(transactionIso).sort();
 
   const [protect, setProtect] = useState(false);
+  const [includeFirstPage, setIncludeFirstPage] = useState(false);
   // Prefilled from the record, but free to change: it protects this file only.
   const [password, setPassword] = useState(defaultPassword);
   const [dateOfStatement, setDateOfStatement] = useState(todayIso());
@@ -126,6 +134,7 @@ export function StatementDialog({
         dateOfStatement: dateOfStatement || undefined,
         dummy,
         protect,
+        includeFirstPage: hasFirstPage && includeFirstPage,
         password: protect ? password.trim() : undefined,
       });
       const fileName = statementFileName();
@@ -196,6 +205,16 @@ export function StatementDialog({
         />
       </div>
       <div className="mt-4">
+        {hasFirstPage && (
+          <div className="mb-3">
+            <CheckboxField
+              label="Include first page PDF"
+              description="Adds the uploaded first page in front of the statement."
+              checked={includeFirstPage}
+              onChange={(event) => setIncludeFirstPage(event.target.checked)}
+            />
+          </div>
+        )}
         <CheckboxField
           label="Protect the PDF with a password"
           description="Applies to this download only — nothing is saved on the record."

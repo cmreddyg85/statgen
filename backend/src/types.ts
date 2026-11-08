@@ -37,6 +37,8 @@ export interface StudentRecordSummary {
   updatedAt: string;
   /** File name of the statement page the record was generated from. */
   attachmentName: string | null;
+  /** File name of the optional first page PDF for downloads. */
+  firstPageName: string | null;
   /** Set on the one record per student and bank that has been finalized. */
   finalizedAt: string | null;
   finalizedBy: string | null;

@@ -3,6 +3,7 @@ import { Router } from "express";
 import { query } from "../db/pool.js";
 import { apiRateLimiter } from "../middleware/rate-limit.js";
 import {
+  prependFirstPage,
   renderIdbiStatement,
   renderStatement,
   type StatementPayload,
@@ -158,6 +159,7 @@ export function toIsoDate(value: unknown): string | null {
  * The live student's finalized SBI or IDBI statement as a PDF, cut to
  * fromDate..toDate (query params, see toIsoDate for the formats). pwdProtected=true locks it
  * with the account's password when there is one; otherwise it is unprotected.
+ * includeFirstPage=true prepends the record's uploaded first page (SBI) when it has one.
  */
 publicRouter.get(
   "/:bank(sbi|idbi)-download/:code?",
@@ -175,8 +177,11 @@ publicRouter.get(
     if (toDate < fromDate)
       throw badRequest("toDate cannot be before fromDate.");
 
-    const { rows } = await query<{ statement: StatementPayload | null }>(
-      `SELECT r.statement_json AS statement
+    const { rows } = await query<{
+      statement: StatementPayload | null;
+      first_page: Buffer | null;
+    }>(
+      `SELECT r.statement_json AS statement, r.first_page
          FROM students s
          LEFT JOIN student_records r
            ON r.student_id = s.id AND r.bank = $2 AND r.finalized_at IS NOT NULL
@@ -192,12 +197,28 @@ publicRouter.get(
       req.query.pwdProtected === "true" &&
       Boolean(statement.accountInfo?.password?.trim());
 
+    // includeFirstPage=true: SBI records with an uploaded first page get it
+    // prepended; without one the normal statement is served.
+    const firstPage =
+      bank === "SBI" && (req.query.includeFirstPage ?? req.query.includefirstpage) === "true"
+        ? rows[0]!.first_page
+        : null;
+
     const render = bank === "IDBI" ? renderIdbiStatement : renderStatement;
-    const { pdf, fileName } = await render(statement, {
+    const rendered = await render(statement, {
       fromDate,
       toDate,
-      protect,
+      // Merge first, then encrypt: an encrypted PDF cannot be appended to.
+      protect: protect && !firstPage,
     });
+    const { fileName } = rendered;
+    const pdf = firstPage
+      ? await prependFirstPage(
+          firstPage,
+          rendered.pdf,
+          protect ? statement.accountInfo.password!.trim() : "",
+        )
+      : rendered.pdf;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
     res.send(pdf);

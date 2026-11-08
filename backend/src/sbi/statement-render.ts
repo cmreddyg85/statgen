@@ -1,5 +1,6 @@
 import { createIdbiSamplePdf } from '../idbi/statement.js';
 import { createSbiStatementPdf } from './statement.js';
+import { PDFDocument } from '@cantoo/pdf-lib';
 import { badRequest } from '../utils/errors.js';
 
 /** The generated statement, however it was produced. */
@@ -112,4 +113,23 @@ export async function renderIdbiStatement(
   );
 
   return { pdf, fileName: `SampleStatement_${statementFileName().replace('AccountStatement_', '')}` };
+}
+
+/** Puts `firstPage` in front of an unencrypted statement; encrypts the result when a password is given. */
+export async function prependFirstPage(
+  firstPage: Buffer,
+  pdf: Buffer,
+  password = '',
+): Promise<Buffer> {
+  const merged = await PDFDocument.create();
+  try {
+    for (const bytes of [firstPage, pdf]) {
+      const src = await PDFDocument.load(bytes);
+      for (const page of await merged.copyPages(src, src.getPageIndices())) merged.addPage(page);
+    }
+  } catch {
+    throw badRequest('The first page PDF could not be read. Upload it again.');
+  }
+  if (password) merged.encrypt({ userPassword: password, ownerPassword: password });
+  return Buffer.from(await merged.save());
 }

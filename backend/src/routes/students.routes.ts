@@ -173,7 +173,9 @@ const recordUpload = multer({
  * as JSON text fields — so the file is stored with the data that came from
  * it. Plain JSON is still accepted for an update that keeps its file.
  */
-const parseRecordBody = parseMultipart(recordUpload.single('file'));
+const parseRecordBody = parseMultipart(
+  recordUpload.fields([{ name: 'file', maxCount: 1 }, { name: 'firstPage', maxCount: 1 }]),
+);
 
 function parseMultipart(upload: ReturnType<typeof recordUpload.any>) {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -210,12 +212,13 @@ function parseMultipart(upload: ReturnType<typeof recordUpload.any>) {
 }
 
 /** The upload as the repository wants it, or null when none was sent. */
-function attachmentFrom(req: Request) {
-  if (!req.file) return null;
+function attachmentFrom(req: Request, field = 'file') {
+  const file = (req.files as Record<string, Express.Multer.File[]> | undefined)?.[field]?.[0];
+  if (!file) return null;
   return {
-    buffer: req.file.buffer,
-    name: req.file.originalname,
-    type: req.file.mimetype || 'application/pdf',
+    buffer: file.buffer,
+    name: file.originalname,
+    type: file.mimetype || 'application/pdf',
   };
 }
 
@@ -244,7 +247,7 @@ studentsRouter.post(
 
     const record = await recordService.create(
       id,
-      { ...body<RecordBody>(req), attachment },
+      { ...body<RecordBody>(req), attachment, firstPage: attachmentFrom(req, 'firstPage') },
       getActor(req),
     );
     res.status(201).json({ record });
@@ -332,7 +335,7 @@ studentsRouter.put(
     const record = await recordService.update(
       id,
       recordId,
-      { ...payload, attachment: attachmentFrom(req) },
+      { ...payload, attachment: attachmentFrom(req), firstPage: attachmentFrom(req, 'firstPage') },
       getActor(req),
     );
     res.json({ record });
@@ -369,6 +372,19 @@ studentsRouter.put(
     const { accountInfo } = body<{ accountInfo: Record<string, string> }>(req);
     const record = await recordService.updateAccountInfo(id, recordId, accountInfo, getActor(req));
     res.json({ record });
+  }),
+);
+
+/** GET /api/v1/students/:id/records/:recordId/first-page — the optional first page PDF. */
+studentsRouter.get(
+  '/:id/records/:recordId/first-page',
+  validate(recordParamsSchema, 'params'),
+  asyncHandler(async (req, res) => {
+    const { id, recordId } = routeParams<{ id: string; recordId: string }>(req);
+    const pdf = await recordService.getFirstPage(id, recordId, getActor(req));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="first-page.pdf"');
+    res.send(pdf);
   }),
 );
 
@@ -490,6 +506,7 @@ studentsRouter.post(
       dummy: boolean;
       protect: boolean;
       password?: string;
+      includeFirstPage: boolean;
     }>(req);
 
     const { pdf, fileName } = await recordService.statementPdf(
