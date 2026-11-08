@@ -130,6 +130,9 @@ export const listStudentsQuerySchema = paginationSchema.extend({
   // Admin-only filter. A non-admin request is scoped to its own records
   // regardless of what is passed here (see student-access.ts).
   createdBy: z.string().uuid('Invalid user identifier').optional(),
+  referredBy: z.string().trim().max(150).optional(),
+  /** 'true': only students nobody referred. Wins over referredBy. */
+  noReferrer: z.enum(['true']).optional(),
 });
 
 export const uuidParamSchema = z.object({

@@ -37,6 +37,14 @@ studentsRouter.get(
   }),
 );
 
+/** GET /api/v1/students/referrers */
+studentsRouter.get(
+  '/referrers',
+  asyncHandler(async (req, res) => {
+    res.json({ referrers: await studentService.referrers(getActor(req)) });
+  }),
+);
+
 /** GET /api/v1/students */
 studentsRouter.get(
   '/',
@@ -48,6 +56,8 @@ studentsRouter.get(
       search?: string;
       status?: 'active' | 'archived' | 'all';
       createdBy?: string;
+      referredBy?: string;
+      noReferrer?: 'true';
     }>(req);
     res.json(await studentService.list(options, getActor(req)));
   }),

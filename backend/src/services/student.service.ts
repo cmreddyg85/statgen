@@ -17,6 +17,8 @@ export interface ListOptions {
   status?: students.ArchiveScope;
   /** Honoured for admins only; a user is always scoped to their own records. */
   createdBy?: string;
+  referredBy?: string;
+  noReferrer?: 'true';
   page: number;
   pageSize: number;
 }
@@ -178,6 +180,11 @@ export async function remove(id: string, actor: RequestActor): Promise<void> {
     ipAddress: actor.ipAddress,
     userAgent: actor.userAgent,
   });
+}
+
+/** Referrer names for the list filter, within the caller's scope. */
+export async function referrers(actor: RequestActor): Promise<string[]> {
+  return students.listReferrers(listScopeFor(actor.user));
 }
 
 /** Counts follow the same scope as the list. */

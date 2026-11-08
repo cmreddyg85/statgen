@@ -60,6 +60,8 @@ export interface ListStudentsOptions {
   status?: ArchiveScope;
   /** Restricts the list to records created by this user. */
   createdBy?: string;
+  referredBy?: string;
+  noReferrer?: 'true';
   page: number;
   pageSize: number;
 }
@@ -85,6 +87,13 @@ export async function listStudents(
   if (options.createdBy) {
     params.push(options.createdBy);
     conditions.push(`s.created_by = $${params.length}::uuid`);
+  }
+
+  if (options.noReferrer) {
+    conditions.push(`(s.referred_by IS NULL OR btrim(s.referred_by) = '')`);
+  } else if (options.referredBy) {
+    params.push(options.referredBy);
+    conditions.push(`s.referred_by = $${params.length}`);
   }
 
   // "All" with no search leaves nothing to filter on, so there is no WHERE.
@@ -113,6 +122,17 @@ export async function listStudents(
     total,
     totalPages: Math.max(1, Math.ceil(total / options.pageSize)),
   };
+}
+
+/** Distinct non-blank referrer names, optionally limited to one owner's students. */
+export async function listReferrers(createdBy?: string): Promise<string[]> {
+  const { rows } = await query<{ referred_by: string }>(
+    `SELECT DISTINCT referred_by FROM students
+      WHERE btrim(coalesce(referred_by, '')) <> '' AND ($1::uuid IS NULL OR created_by = $1::uuid)
+      ORDER BY referred_by`,
+    [createdBy ?? null],
+  );
+  return rows.map((row) => row.referred_by);
 }
 
 export async function insertStudent(input: {

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '@/lib/api';
 import { useDebounced } from '@/lib/use-debounced';
-import { formatMobile } from '@/lib/format';
 import { useSession } from '@/lib/session-context';
 import type { Paginated, Student, User } from '@/lib/types';
 import { Badge, StatusDot } from '@/components/Badge';
@@ -17,6 +16,8 @@ import { Pagination } from '@/components/Pagination';
 import { EmptyState, ErrorState, LoadingState } from '@/components/States';
 import { useToast } from '@/components/Toast';
 import { StudentForm } from './StudentForm';
+
+const NONE = '__none__';
 
 /** Admin-only: a user is always scoped to active students. */
 type StatusFilter = 'active' | 'archived' | 'all';
@@ -41,6 +42,9 @@ export function StudentsClient() {
   const [status, setStatus] = useState<StatusFilter>('active');
   const [createdBy, setCreatedBy] = useState('all');
   const [owners, setOwners] = useState<User[]>([]);
+  // '' = anyone, NONE = students nobody referred, otherwise a referrer's name.
+  const [referredBy, setReferredBy] = useState('');
+  const [referrers, setReferrers] = useState<string[]>([]);
   const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -69,6 +73,13 @@ export function StudentsClient() {
       .catch(() => setOwners([]));
   }, [isAdmin]);
 
+  useEffect(() => {
+    api
+      .get<{ referrers: string[] }>('/students/referrers')
+      .then((result) => setReferrers(result.referrers))
+      .catch(() => setReferrers([]));
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -81,6 +92,8 @@ export function StudentsClient() {
             search: search || undefined,
             status: isAdmin ? status : undefined,
             createdBy: isAdmin && createdBy !== 'all' ? createdBy : undefined,
+            referredBy: referredBy && referredBy !== NONE ? referredBy : undefined,
+            noReferrer: referredBy === NONE ? 'true' : undefined,
           },
         }),
       );
@@ -89,7 +102,7 @@ export function StudentsClient() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, status, createdBy, isAdmin]);
+  }, [page, search, status, createdBy, referredBy, isAdmin]);
 
   // A new search term starts from the first page again.
   useEffect(() => setPage(1), [search]);
@@ -143,7 +156,7 @@ export function StudentsClient() {
     }
   };
 
-  const filtersApplied = search !== '' || status !== 'active' || createdBy !== 'all';
+  const filtersApplied = search !== '' || status !== 'active' || createdBy !== 'all' || referredBy !== '';
 
   return (
     <>
@@ -210,6 +223,20 @@ export function StudentsClient() {
               ]}
             />
           )}
+          <SelectField
+            label="Referred by"
+            className="w-[200px]"
+            value={referredBy}
+            onChange={(value) => {
+              setReferredBy(value);
+              setPage(1);
+            }}
+            options={[
+              { value: '', label: 'Anyone' },
+              { value: NONE, label: 'Blank (not referred)' },
+              ...referrers.map((name) => ({ value: name, label: name })),
+            ]}
+          />
           {filtersApplied && (
             <Button
               variant="ghost"
@@ -217,6 +244,7 @@ export function StudentsClient() {
                 setSearchInput('');
                 setStatus('active');
                 setCreatedBy('all');
+                setReferredBy('');
                 setPage(1);
               }}
             >
@@ -260,7 +288,7 @@ export function StudentsClient() {
                   <tr>
                     <th scope="col">ID</th>
                     <th scope="col">Name</th>
-                    <th scope="col">Mobile</th>
+                    <th scope="col">Referred by</th>
                     <th scope="col">Offer company</th>
                     {isAdmin && status !== 'active' && <th scope="col">Status</th>}
                     {isAdmin && <th scope="col">Created by</th>}
@@ -282,7 +310,7 @@ export function StudentsClient() {
                           {student.name}
                         </Link>
                       </td>
-                      <td data-label="Mobile" className="tabular-nums">{formatMobile(student.mobileNumber) || <span className="text-[var(--color-muted)]">—</span>}</td>
+                      <td data-label="Referred by">{student.referredBy || <span className="text-[var(--color-muted)]">—</span>}</td>
                       <td data-label="Offer company">{student.offerCompany ?? <span className="text-[var(--color-muted)]">—</span>}</td>
                       {isAdmin && status !== 'active' && (
                         <td data-label="Status">

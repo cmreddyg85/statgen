@@ -34,6 +34,8 @@ export function StudentForm({ open, student, onClose, onSaved }: StudentFormProp
     setReferredBy(student?.referredBy ?? '');
     setFormError(null);
     setFieldErrors({});
+    // A successful save leaves this mounted with saving still true.
+    setSaving(false);
   }, [open, student]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
