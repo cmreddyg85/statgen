@@ -378,18 +378,21 @@ function PaymentStatus({ rows }: { rows: NonNullable<DashboardData['paymentStatu
   const total = order.reduce((sum, row) => sum + row.amount, 0);
   const received = order.reduce((sum, row) => sum + Math.min(row.received, row.amount), 0);
   const pending = Math.max(total - received, 0);
+  // Money paid beyond a payment's booked amount; received + excess = cash collected.
+  const excess = order.reduce((sum, row) => sum + Math.max(row.received - row.amount, 0), 0);
   return (
     <ChartCard
       title="Payment status"
       subtitle="Payments connected or paid this period · totals to date"
       table={{
-        columns: ['Status', 'Payments', 'Total', 'Received', 'Pending'],
+        columns: ['Status', 'Payments', 'Total', 'Received', 'Pending', 'Excess'],
         rows: order.map((row) => [
           STATUS[row.status].label,
           row.count,
           rupees(row.amount),
           rupees(row.received),
           rupees(Math.max(row.amount - row.received, 0)),
+          rupees(Math.max(row.received - row.amount, 0)),
         ]),
       }}
     >
@@ -401,6 +404,12 @@ function PaymentStatus({ rows }: { rows: NonNullable<DashboardData['paymentStatu
             <span>
               <span className="font-semibold text-success">{rupees(received)}</span>
               <span className="text-muted"> received</span>
+              {excess > 0 && (
+                <span className="ml-2">
+                  <span className="font-semibold text-warning">+{rupees(excess)}</span>
+                  <span className="text-muted"> excess</span>
+                </span>
+              )}
             </span>
             <span>
               <span className="font-semibold text-danger">{rupees(pending)}</span>
@@ -417,6 +426,7 @@ function PaymentStatus({ rows }: { rows: NonNullable<DashboardData['paymentStatu
           </div>
           <p className="mb-4 mt-1.5 text-xs text-muted">
             {Math.round((received / Math.max(total, 1)) * 100)}% of {rupees(total)} across {count} payment{count > 1 ? 's' : ''}
+            {excess > 0 && ` · ${rupees(received + excess)} collected incl. excess`}
           </p>
           <ul className="space-y-2.5">
             {order.map((row) => (
@@ -432,7 +442,8 @@ function PaymentStatus({ rows }: { rows: NonNullable<DashboardData['paymentStatu
                   <span className="font-medium">{STATUS[row.status].label}</span>
                   {row.count > 0 && (
                     <span className="block text-xs text-muted">
-                      {rupeesShort(row.received)} of {rupeesShort(row.amount)} received
+                      {rupeesShort(Math.min(row.received, row.amount))} of {rupeesShort(row.amount)} received
+                      {row.received > row.amount && ` · +${rupeesShort(row.received - row.amount)} excess`}
                     </span>
                   )}
                 </span>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, api } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
+import { SelectField, TextField } from "@/components/Field";
 import { ConfirmDialog } from "@/components/Modal";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState, ErrorState, LoadingState } from "@/components/States";
@@ -25,6 +26,17 @@ const day = (value: string) =>
     new Date(`${value}T00:00:00`),
   );
 
+const receivedOf = (payment: Payment) =>
+  payment.installments.reduce((sum, row) => sum + Number(row.amount), 0);
+
+/** Paid includes overpaid; part paid has some money in but a balance left. */
+const statusOf = (payment: Payment) => {
+  const received = receivedOf(payment);
+  return received >= payment.amount ? "paid" : received > 0 ? "part" : "unpaid";
+};
+
+const NONE = "__none__";
+
 /** Admin-only: what each student is paying for and what has come in. */
 export function PaymentsClient() {
   const toast = useToast();
@@ -34,6 +46,39 @@ export function PaymentsClient() {
   const [editing, setEditing] = useState<Payment | null>(null);
   const [deleting, setDeleting] = useState<Payment | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [referredBy, setReferredBy] = useState("");
+  const [status, setStatus] = useState("");
+  const [reportType, setReportType] = useState("");
+  const [liveDone, setLiveFilter] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const filtersApplied = Boolean(
+    search || referredBy || status || reportType || liveDone || from || to,
+  );
+
+  const referrers = useMemo(
+    () =>
+      [...new Set((payments ?? []).map((p) => p.referredBy?.trim()).filter(Boolean))].sort() as string[],
+    [payments],
+  );
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return (payments ?? []).filter((p) => {
+      if (term && !`${p.studentName} ${p.studentCode}`.toLowerCase().includes(term)) return false;
+      const ref = p.referredBy?.trim() ?? "";
+      if (referredBy === NONE ? ref !== "" : referredBy && ref !== referredBy) return false;
+      if (status && statusOf(p) !== status) return false;
+      if (reportType && !p.reportTypes.includes(reportType as never)) return false;
+      if (liveDone === "done" && !p.liveDoneAt) return false;
+      if (liveDone === "pending" && p.liveDoneAt) return false;
+      if (from && p.connectedDate < from) return false;
+      if (to && p.connectedDate > to) return false;
+      return true;
+    });
+  }, [payments, search, referredBy, status, reportType, liveDone, from, to]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -104,6 +149,81 @@ export function PaymentsClient() {
     setFormOpen(true);
   };
 
+  const filterBar = (
+    <div className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">
+      <div className="min-w-55 flex-1">
+        <TextField
+          label="Search"
+          placeholder="Student name or ID"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
+      <SelectField
+        label="Referred by"
+        className="w-50"
+        value={referredBy}
+        onChange={setReferredBy}
+        options={[
+          { value: "", label: "Anyone" },
+          { value: NONE, label: "Blank (not referred)" },
+          ...referrers.map((name) => ({ value: name, label: name })),
+        ]}
+      />
+      <SelectField
+        label="Payment status"
+        className="w-40"
+        value={status}
+        onChange={setStatus}
+        options={[
+          { value: "", label: "All" },
+          { value: "paid", label: "Paid" },
+          { value: "part", label: "Part paid" },
+          { value: "unpaid", label: "Not paid" },
+        ]}
+      />
+      <SelectField
+        label="Report"
+        className="w-36"
+        value={reportType}
+        onChange={setReportType}
+        options={[
+          { value: "", label: "Any" },
+          ...REPORT_TYPES.map((t) => ({ value: t.value, label: t.label })),
+        ]}
+      />
+      <SelectField
+        label="Live done"
+        className="w-36"
+        value={liveDone}
+        onChange={setLiveFilter}
+        options={[
+          { value: "", label: "All" },
+          { value: "done", label: "Done" },
+          { value: "pending", label: "Not done" },
+        ]}
+      />
+      <TextField label="Connected from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
+      <TextField label="Connected to" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
+      {filtersApplied && (
+        <Button
+          variant="ghost"
+          onClick={() => {
+            setSearch("");
+            setReferredBy("");
+            setStatus("");
+            setReportType("");
+            setLiveFilter("");
+            setFrom("");
+            setTo("");
+          }}
+        >
+          Clear
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <>
       <PageHeader
@@ -121,6 +241,14 @@ export function PaymentsClient() {
           />
         ) : !payments ? (
           <LoadingState label="Loading payments…" />
+        ) : payments.length > 0 && filtered.length === 0 ? (
+          <>
+            {filterBar}
+            <EmptyState
+              title="No matching payments"
+              message="No payment matches the current filters."
+            />
+          </>
         ) : payments.length === 0 ? (
           <EmptyState
             title="No payments yet"
@@ -128,6 +256,8 @@ export function PaymentsClient() {
             action={<Button onClick={() => openForm(null)}>Add payment</Button>}
           />
         ) : (
+          <>
+          {filterBar}
           <div className="table-wrap">
             <table className="data-table">
               <thead>
@@ -151,11 +281,8 @@ export function PaymentsClient() {
                 </tr>
               </thead>
               <tbody>
-                {payments.map((payment) => {
-                  const received = payment.installments.reduce(
-                    (sum, row) => sum + Number(row.amount),
-                    0,
-                  );
+                {filtered.map((payment) => {
+                  const received = receivedOf(payment);
                   const balance = payment.amount - received;
                   return (
                     <tr
@@ -278,6 +405,7 @@ export function PaymentsClient() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </section>
 
