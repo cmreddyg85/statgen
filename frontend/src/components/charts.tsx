@@ -8,8 +8,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
  * sits under 3:1 on white, so wherever it is used the value is also printed.
  */
 export const SERIES = ['#2a78d6', '#eb6834', '#1baf7a'] as const;
-const GRID = '#e8edf3';
-const AXIS_TEXT = '#64748b';
+const GRID = 'var(--color-slate-200)';
+const AXIS_TEXT = 'var(--color-muted)';
 
 /** Tracks an element's width so SVG text stays crisp at any size. */
 function useWidth<T extends HTMLElement>() {
@@ -59,7 +59,7 @@ function Tooltip({ x, width, title, rows }: { x: number; width: number; title: s
   const left = Math.min(Math.max(x - 80, 0), Math.max(width - 168, 0));
   return (
     <div
-      className="pointer-events-none absolute top-0 z-10 w-42 rounded-lg border border-line bg-white px-3 py-2 text-xs shadow-lg"
+      className="pointer-events-none absolute top-0 z-10 w-42 rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg"
       style={{ left }}
     >
       <p className="mb-1 font-semibold text-ink">{title}</p>
@@ -149,14 +149,14 @@ export function LineChart({
                 strokeLinejoin="round"
                 strokeLinecap="round"
               />
-              {n > 0 && <circle cx={x(n - 1)} cy={y(s.values[n - 1]!)} r={4} fill={s.color} stroke="#fff" strokeWidth={2} />}
+              {n > 0 && <circle cx={x(n - 1)} cy={y(s.values[n - 1]!)} r={4} fill={s.color} stroke="var(--color-surface)" strokeWidth={2} />}
             </g>
           ))}
           {hover && (
             <g>
               <line x1={hover.x} x2={hover.x} y1={PAD.top} y2={PAD.top + plotH} stroke="#94a3b8" strokeWidth={1} />
               {series.map((s) => (
-                <circle key={s.label} cx={hover.x} cy={y(s.values[hover.index]!)} r={4.5} fill={s.color} stroke="#fff" strokeWidth={2} />
+                <circle key={s.label} cx={hover.x} cy={y(s.values[hover.index]!)} r={4.5} fill={s.color} stroke="var(--color-surface)" strokeWidth={2} />
               ))}
             </g>
           )}
@@ -228,7 +228,7 @@ export function ColumnChart({
           {values.map((v, i) => (
             <g key={i} onMouseEnter={() => setHover(i)}>
               {/* The hit target is the whole band, not just the column. */}
-              <rect x={cx(i) - band / 2} y={PAD.top} width={band} height={plotH} fill={hover === i ? '#f1f5f9' : 'transparent'} />
+              <rect x={cx(i) - band / 2} y={PAD.top} width={band} height={plotH} fill={hover === i ? 'var(--color-slate-100)' : 'transparent'} />
               <path d={column(i, v)} fill={color} />
             </g>
           ))}
@@ -414,7 +414,7 @@ export function StatTile({
     }
   }
   return (
-    <div className={`card px-5 py-4 ${hero ? 'bg-gradient-to-br from-blue-50 to-white ring-1 ring-blue-100' : ''}`}>
+    <div className={`card px-5 py-4 ${hero ? 'bg-gradient-to-br from-blue-50 to-surface ring-1 ring-blue-100' : ''}`}>
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
       <p
         className={`mt-1.5 font-bold tracking-tight ${hero ? 'text-4xl' : 'text-[28px]'} ${tone === 'danger' ? 'text-danger' : 'text-ink'}`}

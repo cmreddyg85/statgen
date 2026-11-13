@@ -63,7 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-white lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-surface lg:flex">
         <BrandMark />
         {navigation}
         <FooterNote role={user.role} />
@@ -78,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-slate-900/40"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="animate-in absolute inset-y-0 left-0 flex w-66 flex-col border-r border-line bg-white shadow-xl">
+          <aside className="animate-in absolute inset-y-0 left-0 flex w-66 flex-col border-r border-line bg-surface shadow-xl">
             <BrandMark />
             {navigation}
             <FooterNote role={user.role} />
@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-white/95 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
@@ -113,6 +113,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <SessionTimer />
+          <ThemeToggle />
           <ProfileMenu />
         </header>
 
@@ -121,6 +122,52 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
     </div>
+  );
+}
+
+/**
+ * Light/dark switch. The theme lives on <html data-theme> (set before paint by
+ * the script in the root layout), so the icon swap is plain CSS — no state.
+ */
+function ThemeToggle() {
+  const toggle = () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme !== 'dark';
+    if (dark) root.dataset.theme = 'dark';
+    else delete root.dataset.theme;
+    try {
+      localStorage.setItem('theme', dark ? 'dark' : 'light');
+    } catch {
+      // Storage blocked: the theme still applies for this page load.
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label="Toggle dark mode"
+      title="Toggle dark mode"
+      className="rounded-lg p-2 text-muted transition-colors hover:bg-slate-100 hover:text-ink"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        {/* Moon in light mode, sun in dark mode: the icon shows what a click gives. */}
+        <path
+          className="dark:hidden"
+          d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+        <path
+          className="hidden dark:block"
+          d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0-13v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4m0-12.8L17 7M7 17l-1.4 1.4"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      </svg>
+    </button>
   );
 }
 

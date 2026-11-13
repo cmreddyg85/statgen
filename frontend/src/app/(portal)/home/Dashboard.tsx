@@ -359,7 +359,7 @@ function Snapshot({ label, value, hint, href, tone }: { label: string; value: st
   );
   const className = 'card block border-dashed bg-slate-50/60 px-4 py-3';
   return href ? (
-    <Link href={href} className={`${className} transition-colors hover:bg-white`}>
+    <Link href={href} className={`${className} transition-colors hover:bg-surface`}>
       {body}
     </Link>
   ) : (

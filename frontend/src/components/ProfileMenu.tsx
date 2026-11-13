@@ -45,7 +45,7 @@ export function ProfileMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu for ${user.name}`}
-        className="flex items-center gap-2 rounded-full border border-line bg-white py-1 pl-1 pr-2.5 transition-colors hover:bg-slate-50"
+        className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-2.5 transition-colors hover:bg-slate-50"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">
           {initials(user.name)}

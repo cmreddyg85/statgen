@@ -17,7 +17,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // The inline script applies the saved theme before first paint (no flash);
+    // it changes <html>'s attributes, hence suppressHydrationWarning.
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('theme')==='dark')document.documentElement.dataset.theme='dark'}catch{}`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

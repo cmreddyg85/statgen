@@ -86,7 +86,7 @@ export function UserAuditDialog({
           />
         ) : data ? (
           <>
-            <ul className="max-h-[50vh] divide-y divide-[#e2e8f0] overflow-y-auto">
+            <ul className="max-h-[50vh] divide-y divide-slate-200 overflow-y-auto">
               {data.items.map((entry) => (
                 <li key={entry.id} className="flex items-start gap-3 px-6 py-3">
                   <div className="min-w-0 flex-1">

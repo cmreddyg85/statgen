@@ -278,7 +278,7 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
                     id={`email-file-${email.key}`}
                     type="file"
                     onChange={(event) => setEmail(index, { file: event.target.files?.[0] ?? null })}
-                    className="block w-full cursor-pointer rounded-lg border border-line bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
+                    className="block w-full cursor-pointer rounded-lg border border-line bg-surface p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
                   />
                   {!email.file && email.fileId && recordId && (
                     <p className="mt-1.5 text-xs text-muted">
@@ -329,7 +329,7 @@ export function EmailRecordForm({ studentId, recordId }: { studentId: string; re
                     {email.replacements.map((r, rIndex) => (
                       <div
                         key={r.key}
-                        className="grid items-start gap-3 rounded-lg border border-line bg-white px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
+                        className="grid items-start gap-3 rounded-lg border border-line bg-surface px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
                       >
                         <TextField
                           label="Old text"

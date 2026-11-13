@@ -23,6 +23,54 @@
     'Helvetica Neue', Arial, sans-serif;
 }
 
+/* `dark:` utilities follow the header toggle (data-theme on <html>). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Dark theme. Every colour in the app resolves through a CSS variable — the
+ * tokens above or Tailwind's palette — so re-pointing them here re-themes all
+ * pages without touching components. Pale tints (the -50/-100/-200 steps
+ * used for fills and borders) become deep ones; the dark text steps become light.
+ */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-surface: #1e293b;
+  --color-canvas: #0f172a;
+  --color-primary: #3b82f6;
+  --color-primary-dark: #60a5fa;
+  --color-ink: #e2e8f0;
+  --color-muted: #94a3b8;
+  --color-line: #334155;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --color-slate-50: #243044;
+  --color-slate-100: #2a3649;
+  --color-slate-200: #334155;
+  --color-slate-300: #475569;
+  --color-slate-400: #64748b;
+  --color-slate-600: #cbd5e1;
+  --color-slate-700: #e2e8f0;
+
+  --color-red-50: #3b1d22;
+  --color-red-200: #7f1d1d;
+  --color-red-300: #991b1b;
+  --color-amber-50: #3a2a10;
+  --color-amber-200: #78350f;
+  --color-amber-300: #92400e;
+  --color-green-50: #12301f;
+  --color-green-100: #17402a;
+  --color-green-200: #166534;
+  --color-emerald-50: #10302a;
+  --color-emerald-700: #34d399;
+  --color-blue-50: #172a4d;
+  --color-blue-100: #1e3a8a;
+  --color-blue-200: #1e40af;
+  --color-blue-300: #3b82f6;
+}
+
 @layer base {
   * {
     border-color: var(--color-line);
@@ -57,7 +105,7 @@
   }
 
   ::placeholder {
-    color: #94a3b8;
+    color: var(--color-slate-400);
   }
 }
 
@@ -99,7 +147,7 @@
   }
 
   .field-input:disabled {
-    background-color: #f1f5f9;
+    background-color: var(--color-slate-100);
     cursor: not-allowed;
   }
 
@@ -124,7 +172,7 @@
     position: sticky;
     top: 0;
     z-index: 1;
-    background-color: #f8fafc;
+    background-color: var(--color-slate-50);
     text-align: left;
     font-weight: 600;
     color: var(--color-muted);
@@ -132,13 +180,13 @@
     letter-spacing: 0.05em;
     font-size: 11px;
     padding: 10px 16px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--color-slate-200);
     white-space: nowrap;
   }
 
   .data-table tbody td {
     padding: 12px 16px;
-    border-bottom: 1px solid #eef2f6;
+    border-bottom: 1px solid var(--color-slate-100);
     vertical-align: middle;
   }
 
@@ -147,7 +195,7 @@
   }
 
   .data-table tbody tr:hover {
-    background-color: #f8fafc;
+    background-color: var(--color-slate-50);
   }
 
   .data-table tbody tr:last-child td {
@@ -167,18 +215,18 @@
 
   .data-table thead .col-actions,
   .data-table tbody tr:hover .col-actions {
-    background-color: #f8fafc;
+    background-color: var(--color-slate-50);
   }
 
   /* A row that is done: light green, including the pinned actions cell. */
   .data-table tbody tr.row-done,
   .data-table tbody tr.row-done .col-actions {
-    background-color: #f0fdf4;
+    background-color: var(--color-green-50);
   }
 
   .data-table tbody tr.row-done:hover,
   .data-table tbody tr.row-done:hover .col-actions {
-    background-color: #dcfce7;
+    background-color: var(--color-green-100);
   }
 
   /* A compact pill for "view this" and "download that" inside table cells. */
@@ -188,9 +236,9 @@
     gap: 6px;
     height: 28px;
     padding: 0 10px;
-    border: 1px solid #dbe3ee;
+    border: 1px solid var(--color-slate-200);
     border-radius: 999px;
-    background-color: #fff;
+    background-color: var(--color-surface);
     color: var(--color-ink);
     font-size: 12px;
     font-weight: 600;
@@ -199,8 +247,8 @@
   }
 
   .chip:hover:not(:disabled) {
-    border-color: #93c5fd;
-    background-color: #eff6ff;
+    border-color: var(--color-blue-300);
+    background-color: var(--color-blue-50);
     color: var(--color-primary-dark);
   }
 
@@ -240,7 +288,7 @@
     .data-table tbody tr {
       display: block;
       margin: 12px;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--color-slate-200);
       border-radius: 10px;
       background-color: var(--color-surface);
       overflow: hidden;
@@ -252,8 +300,8 @@
 
     .data-table tbody tr.row-done,
     .data-table tbody tr.row-done:hover {
-      background-color: #f0fdf4;
-      border-color: #bbf7d0;
+      background-color: var(--color-green-50);
+      border-color: var(--color-green-200);
     }
 
     .data-table tbody td,
@@ -263,7 +311,7 @@
       gap: 12px;
       align-items: start;
       padding: 10px 14px;
-      border-bottom: 1px solid #eef2f6;
+      border-bottom: 1px solid var(--color-slate-100);
     }
 
     .data-table tbody td::before {
@@ -288,7 +336,7 @@
     .data-table tbody tr:hover .col-actions {
       position: static;
       box-shadow: none;
-      background-color: #f8fafc;
+      background-color: var(--color-slate-50);
       border-bottom: none;
     }
 

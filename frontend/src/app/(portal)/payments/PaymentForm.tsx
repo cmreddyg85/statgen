@@ -235,7 +235,7 @@ export function PaymentForm({
               <span aria-hidden="true">▾</span>
             </button>
             {menu === 'student' && (
-              <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white shadow-lg">
+              <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-surface shadow-lg">
                 <div className="border-b border-line p-2">
                   <input
                     autoFocus
@@ -323,7 +323,7 @@ export function PaymentForm({
               <ul
                 role="listbox"
                 aria-multiselectable="true"
-                className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white py-1 shadow-lg"
+                className="absolute z-20 mt-1 w-full rounded-md border border-line bg-surface py-1 shadow-lg"
               >
                 {REPORT_TYPES.map((type) => (
                   <li key={type.value} role="option" aria-selected={reportTypes.includes(type.value)}>

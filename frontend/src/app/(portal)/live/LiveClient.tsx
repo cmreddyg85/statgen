@@ -135,7 +135,7 @@ export function LiveClient() {
                 <span aria-hidden="true">▾</span>
               </button>
               {open === 'students' && (
-                <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white shadow-lg">
+                <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-surface shadow-lg">
                   <div className="border-b border-line p-2">
                     <input
                       autoFocus
@@ -187,7 +187,7 @@ export function LiveClient() {
                 <span aria-hidden="true">▾</span>
               </button>
               {open === 'active' && (
-                <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-white shadow-lg">
+                <div className="absolute z-20 mt-1 w-full rounded-md border border-line bg-surface shadow-lg">
                   <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
                     {[null, ...chosen].map((s) => (
                       <li key={s?.id ?? 'none'} role="option" aria-selected={active === (s?.id ?? '')}>

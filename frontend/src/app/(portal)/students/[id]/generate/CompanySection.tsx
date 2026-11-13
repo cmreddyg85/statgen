@@ -134,7 +134,7 @@ export function CompanySection({
             onChange={(event) => set("salaryCreditText", event.target.value)}
             error={at("salaryCreditText")}
           />
-          <p className="mt-2 rounded-lg border border-line bg-white px-3 py-2 font-mono text-[12px] break-all text-ink">
+          <p className="mt-2 rounded-lg border border-line bg-surface px-3 py-2 font-mono text-[12px] break-all text-ink">
             {salaryNarration(
               company.ifsc,
               company.bank,
@@ -173,7 +173,7 @@ export function CompanySection({
             {company.hikes.map((hike, hikeIndex) => (
               <div
                 key={hike.id}
-                className="grid items-start gap-3 rounded-lg border border-line bg-white px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
+                className="grid items-start gap-3 rounded-lg border border-line bg-surface px-3 py-3 sm:grid-cols-[1fr_1fr_auto]"
               >
                 <TextField
                   label={`Hike ${hikeIndex + 1} date`}

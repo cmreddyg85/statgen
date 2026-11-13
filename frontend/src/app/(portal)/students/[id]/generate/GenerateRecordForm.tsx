@@ -439,7 +439,7 @@ export function GenerateRecordForm({
                     accept="application/pdf,.pdf"
                     onChange={onFileChange}
                     aria-invalid={documentError ? true : undefined}
-                    className="block w-full cursor-pointer rounded-lg border border-line bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
+                    className="block w-full cursor-pointer rounded-lg border border-line bg-surface p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
                   />
                   {documentError || (submitted && errors.document) ? (
                     <p className="field-error" role="alert">
@@ -501,7 +501,7 @@ export function GenerateRecordForm({
                         setFirstPageError(null);
                         setFirstPage(picked);
                       }}
-                      className="block w-full cursor-pointer rounded-lg border border-line bg-white p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
+                      className="block w-full cursor-pointer rounded-lg border border-line bg-surface p-2 text-[13px] file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[13px] file:font-semibold file:text-ink hover:file:bg-slate-200"
                     />
                     {firstPageError ? (
                       <p className="field-error" role="alert">
